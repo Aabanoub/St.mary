@@ -1,0 +1,97 @@
+@import url('https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;500;600;700;800;900&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: #fbf8f5;
+  --foreground: #22140c;
+  --card: #ffffff;
+  --card-foreground: #22140c;
+  --border: #ebdcd0;
+  --primary: #68432b;
+  --primary-hover: #4f3220;
+  --primary-foreground: #ffffff;
+  --secondary: #f5eee7;
+  --secondary-foreground: #4f3220;
+  --muted: #f2e8dc;
+  --muted-foreground: #825739;
+  --accent: #f59e0b;
+  --accent-foreground: #ffffff;
+}
+
+.dark {
+  --background: #18120e;
+  --foreground: #f5eee7;
+  --card: #231b15;
+  --card-foreground: #f5eee7;
+  --border: #3d2a1d;
+  --primary: #9f734d;
+  --primary-hover: #be9877;
+  --primary-foreground: #ffffff;
+  --secondary: #2f231b;
+  --secondary-foreground: #f5eee7;
+  --muted: #33271f;
+  --muted-foreground: #dbc2ad;
+  --accent: #fbbf24;
+  --accent-foreground: #18120e;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  padding: 0;
+  margin: 0;
+  font-family: 'Cairo', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+  direction: rtl;
+  text-align: right;
+  background-color: var(--background);
+  color: var(--foreground);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Custom Scrollbar in Warm Brown */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--background);
+}
+
+::-webkit-scrollbar-thumb {
+  background: #be9877;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #9f734d;
+}
+
+/* Smooth transitions */
+button, a, input, select, textarea {
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Print Styles for A4 Reports */
+@media print {
+  body {
+    background: white !important;
+    color: black !important;
+  }
+  .no-print {
+    display: none !important;
+  }
+  .print-only {
+    display: block !important;
+  }
+  .page-break {
+    page-break-after: always;
+  }
+}

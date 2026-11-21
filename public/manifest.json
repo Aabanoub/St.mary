@@ -1,0 +1,21 @@
+{
+  "name": "كنيسة السيدة العذراء مريم - إعداد خدام",
+  "short_name": "إعداد خدام",
+  "description": "تطبيق إدارة الحضور والمتابعة الروحية وإعداد الخدام بكنيسة السيدة العذراء مريم",
+  "start_url": "/dashboard",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#fbf8f5",
+  "theme_color": "#68432b",
+  "dir": "rtl",
+  "lang": "ar",
+  "categories": ["education", "lifestyle", "productivity"],
+  "icons": [
+    {
+      "src": "/icons/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
