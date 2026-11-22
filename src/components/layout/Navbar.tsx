@@ -13,6 +13,7 @@ import {
   LogOut,
   QrCode,
   ShieldCheck,
+  Download,
   User as UserIcon,
 } from 'lucide-react';
 import { getRoleBadgeConfig } from '@/lib/utils/formatters';
@@ -109,6 +110,16 @@ export function Navbar() {
               <span className="hidden sm:inline">مسح QR</span>
             </Link>
           )}
+
+          {/* Install App Quick Button */}
+          <button
+            onClick={() => window.dispatchEvent(new Event('open-pwa-install'))}
+            className="hidden md:flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold text-amber-900 dark:text-amber-200 bg-amber-50 hover:bg-amber-100 dark:bg-amber-950/50 dark:hover:bg-amber-900/60 border border-amber-300/60 dark:border-amber-800/60 transition-colors cursor-pointer"
+            title="تثبيت التطبيق على جهازك"
+          >
+            <Download className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
+            <span>تثبيت التطبيق</span>
+          </button>
 
           {/* Notifications Link */}
           <Link

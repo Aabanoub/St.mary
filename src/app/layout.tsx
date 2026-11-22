@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from 'next';
 import './globals.css';
 import { AuthProvider } from '@/context/AuthContext';
 import { ThemeProvider } from '@/context/ThemeContext';
+import { InstallPromptModal } from '@/components/pwa/InstallPromptModal';
 
 export const metadata: Metadata = {
   title: 'كنيسة السيدة العذراء مريم - إعداد خدام',
@@ -43,7 +44,10 @@ export default function RootLayout({
       </head>
       <body className="min-h-screen bg-[#fbf8f5] dark:bg-[#18120e] text-[#22140c] dark:text-[#f5eee7] antialiased selection:bg-brown-200 dark:selection:bg-brown-800">
         <ThemeProvider>
-          <AuthProvider>{children}</AuthProvider>
+          <AuthProvider>
+            {children}
+            <InstallPromptModal />
+          </AuthProvider>
         </ThemeProvider>
 
         <script

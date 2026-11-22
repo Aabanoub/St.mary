@@ -17,6 +17,7 @@ import {
   Bell,
   ScrollText,
   FileText,
+  Download,
 } from 'lucide-react';
 
 export function Sidebar() {
@@ -92,8 +93,16 @@ export function Sidebar() {
         })}
       </div>
 
-      {/* Quick Info Box at Bottom */}
+      {/* Quick Info Box at Bottom & PWA Install Button */}
       <div className="mt-auto pt-4 border-t border-brown-100 dark:border-brown-900/60">
+        <button
+          onClick={() => window.dispatchEvent(new Event('open-pwa-install'))}
+          className="w-full mb-3 flex items-center justify-center gap-2 p-2.5 rounded-xl bg-amber-50/90 dark:bg-amber-950/40 border border-amber-300/60 dark:border-amber-800/60 text-amber-950 dark:text-amber-200 text-xs font-bold hover:bg-amber-100 dark:hover:bg-amber-900/50 transition-all cursor-pointer shadow-sm group"
+        >
+          <Download className="w-4 h-4 text-amber-600 dark:text-amber-400 group-hover:scale-110 transition-transform" />
+          <span>تثبيت التطبيق على جهازك</span>
+        </button>
+
         <div className="p-3 bg-brown-50/70 dark:bg-brown-950/40 rounded-xl border border-brown-200/50 dark:border-brown-900/40 text-center">
           <p className="text-[11px] font-bold text-brown-900 dark:text-brown-200 mb-0.5">
             كنيسة السيدة العذراء مريم
