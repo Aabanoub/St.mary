@@ -125,7 +125,8 @@ export default function ExamsListPage() {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {exams.map((exam) => {
-              const isPassed = exam.is_submitted && exam.submission?.total_score >= exam.pass_score;
+              const isGraded = exam.is_submitted && exam.submission?.is_graded === true;
+              const isPassed = isGraded && exam.submission?.total_score >= exam.pass_score;
 
               return (
                 <Card key={exam.id} hoverEffect className="flex flex-col justify-between p-5">
@@ -135,9 +136,15 @@ export default function ExamsListPage() {
                         {exam.book_name} - الإصحاح {exam.chapter_number}
                       </span>
                       {exam.is_submitted ? (
-                        <Badge variant={isPassed ? 'success' : 'danger'} size="sm" dot>
-                          {isPassed ? 'ناجح' : 'لم يوفق'} ({exam.submission?.total_score} درجة)
-                        </Badge>
+                        !isGraded ? (
+                          <Badge variant="warning" size="sm" dot>
+                            قيد التصحيح والمراجعة ⏳
+                          </Badge>
+                        ) : (
+                          <Badge variant={isPassed ? 'success' : 'danger'} size="sm" dot>
+                            {isPassed ? 'ناجح' : 'لم يوفق'} ({exam.submission?.total_score} درجة)
+                          </Badge>
+                        )
                       ) : (
                         <Badge variant="warning" size="sm">
                           متاح للتقديم
@@ -166,7 +173,7 @@ export default function ExamsListPage() {
                     {exam.is_submitted ? (
                       <Link href={`/exams/${exam.id}/result`}>
                         <Button variant="outline" size="sm" leftIcon={<ArrowLeft className="w-3.5 h-3.5" />}>
-                          عرض نتيجتك
+                          {!isGraded ? 'عرض حالة التسليم' : 'عرض نتيجتك'}
                         </Button>
                       </Link>
                     ) : (

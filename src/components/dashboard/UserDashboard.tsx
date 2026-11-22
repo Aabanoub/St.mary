@@ -475,9 +475,15 @@ export function UserDashboard() {
                   </div>
 
                   {exam.is_submitted ? (
-                    <Badge variant="success" size="sm">
-                      تم التقديم: {exam.submission?.total_score} درجة
-                    </Badge>
+                    !exam.submission?.is_graded ? (
+                      <Badge variant="warning" size="sm">
+                        قيد التصحيح ⏳
+                      </Badge>
+                    ) : (
+                      <Badge variant="success" size="sm">
+                        الدرجة: {exam.submission?.total_score}
+                      </Badge>
+                    )
                   ) : (
                     <Link href={`/exams/${exam.id}`}>
                       <Button variant="primary" size="sm">

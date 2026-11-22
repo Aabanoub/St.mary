@@ -101,6 +101,7 @@ export interface Exam {
   end_time?: string | null;
   is_published: boolean;
   pass_score: number;
+  requires_manual_grading?: boolean;
   created_by?: string | null;
   created_at: string;
   updated_at: string;
@@ -135,6 +136,8 @@ export interface ExamSubmission {
   total_score: number;
   is_graded: boolean;
   feedback?: string | null;
+  graded_by?: string | null;
+  graded_at?: string | null;
   user?: Profile;
   exam?: Exam;
   answers?: ExamAnswer[];
