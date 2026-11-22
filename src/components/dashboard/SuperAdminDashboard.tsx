@@ -26,6 +26,10 @@ import {
   CheckCircle2,
   Clock,
   AlertCircle,
+  ShieldAlert,
+  AlertTriangle,
+  RotateCcw,
+  X,
 } from 'lucide-react';
 import { formatDateArabic, formatShortDateArabic, getAttendanceStatusConfig } from '@/lib/utils/formatters';
 
@@ -48,77 +52,125 @@ export function SuperAdminDashboard() {
   const [recentLogs, setRecentLogs] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  useEffect(() => {
-    const loadSuperAdminData = async () => {
-      try {
-        // 1. Fetch counts
-        const [
-          { count: usersCount },
-          { count: adminsCount },
-          { count: meetingsCount },
-          { count: examsCount },
-          { count: plansCount },
-        ] = await Promise.all([
-          supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('role', 'user'),
-          supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('role', 'admin'),
-          supabase.from('meetings').select('*', { count: 'exact', head: true }),
-          supabase.from('exams').select('*', { count: 'exact', head: true }),
-          supabase.from('reading_plans').select('*', { count: 'exact', head: true }),
-        ]);
+  // Danger Zone - Reset All Data Modal State
+  const [isResetModalOpen, setIsResetModalOpen] = useState(false);
+  const [confirmCodeInput, setConfirmCodeInput] = useState('');
+  const [isResetting, setIsResetting] = useState(false);
+  const [resetError, setResetError] = useState<string | null>(null);
+  const [resetSuccess, setResetSuccess] = useState<string | null>(null);
 
-        // 2. Fetch latest meeting
-        const { data: meetings } = await supabase
-          .from('meetings')
-          .select('*')
-          .order('meeting_date', { ascending: false })
-          .limit(1);
+  const loadSuperAdminData = async () => {
+    try {
+      // 1. Fetch counts
+      const [
+        { count: usersCount },
+        { count: adminsCount },
+        { count: meetingsCount },
+        { count: examsCount },
+        { count: plansCount },
+      ] = await Promise.all([
+        supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('role', 'user'),
+        supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('role', 'admin'),
+        supabase.from('meetings').select('*', { count: 'exact', head: true }),
+        supabase.from('exams').select('*', { count: 'exact', head: true }),
+        supabase.from('reading_plans').select('*', { count: 'exact', head: true }),
+      ]);
 
-        const latest = meetings?.[0] || null;
-        setLatestMeeting(latest);
+      // 2. Fetch latest meeting
+      const { data: meetings } = await supabase
+        .from('meetings')
+        .select('*')
+        .order('meeting_date', { ascending: false })
+        .limit(1);
 
-        if (latest) {
-          const { data: att } = await supabase
-            .from('attendance')
-            .select('status')
-            .eq('meeting_id', latest.id);
+      const latest = meetings?.[0] || null;
+      setLatestMeeting(latest);
 
-          const pres = att?.filter((a) => a.status === 'present').length || 0;
-          const lat = att?.filter((a) => a.status === 'late').length || 0;
-          const abs = Math.max(0, (usersCount || 0) - (pres + lat));
+      if (latest) {
+        const { data: att } = await supabase
+          .from('attendance')
+          .select('status')
+          .eq('meeting_id', latest.id);
 
-          setMeetingStats({
-            present: pres,
-            late: lat,
-            absent: abs,
-          });
-        }
+        const pres = att?.filter((a) => a.status === 'present').length || 0;
+        const lat = att?.filter((a) => a.status === 'late').length || 0;
+        const abs = Math.max(0, (usersCount || 0) - (pres + lat));
 
-        // 3. Activity logs
-        const { data: logs } = await supabase
-          .from('activity_logs')
-          .select('*, actor:profiles(full_name, role)')
-          .order('created_at', { ascending: false })
-          .limit(6);
-
-        setRecentLogs(logs || []);
-
-        setStats({
-          totalUsers: usersCount || 0,
-          totalAdmins: adminsCount || 0,
-          totalMeetings: meetingsCount || 0,
-          overallAttendanceRate: 85,
-          totalExams: examsCount || 0,
-          totalReadingPlans: plansCount || 0,
+        setMeetingStats({
+          present: pres,
+          late: lat,
+          absent: abs,
         });
-      } catch (err) {
-        console.error('Error loading super admin dashboard:', err);
-      } finally {
-        setIsLoading(false);
+      } else {
+        setMeetingStats({
+          present: 0,
+          late: 0,
+          absent: 0,
+        });
       }
-    };
 
+      // 3. Activity logs
+      const { data: logs } = await supabase
+        .from('activity_logs')
+        .select('*, actor:profiles(full_name, role)')
+        .order('created_at', { ascending: false })
+        .limit(6);
+
+      setRecentLogs(logs || []);
+
+      setStats({
+        totalUsers: usersCount || 0,
+        totalAdmins: adminsCount || 0,
+        totalMeetings: meetingsCount || 0,
+        overallAttendanceRate: 85,
+        totalExams: examsCount || 0,
+        totalReadingPlans: plansCount || 0,
+      });
+    } catch (err) {
+      console.error('Error loading super admin dashboard:', err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
     loadSuperAdminData();
   }, []);
+
+  const handleExecuteSystemReset = async () => {
+    if (confirmCodeInput !== 'Reset.15.550right') {
+      setResetError('كود التأكيد غير صحيح. يرجى إدخال الكود المطلوب بدقة.');
+      return;
+    }
+
+    setIsResetting(true);
+    setResetError(null);
+    setResetSuccess(null);
+
+    try {
+      const { data, error } = await supabase.rpc('super_admin_reset_all_data', {
+        p_code: confirmCodeInput,
+      });
+
+      if (error) throw error;
+
+      setResetSuccess(
+        data?.message || 'تم تصفير وإعادة ضبط كافة بيانات النظام بنجاح مع الحفاظ على حسابات المشرفين.'
+      );
+
+      setTimeout(async () => {
+        setIsResetModalOpen(false);
+        setConfirmCodeInput('');
+        setResetSuccess(null);
+        await loadSuperAdminData();
+      }, 2500);
+    } catch (err: any) {
+      const msg = err?.message || 'حدث خطأ أثناء محاولة تصفير البيانات';
+      setResetError(msg);
+    } finally {
+      setIsResetting(false);
+    }
+  };
 
   if (isLoading) {
     return (
@@ -413,7 +465,163 @@ export function SuperAdminDashboard() {
             </div>
           )}
         </Card>
+
+        {/* Danger Zone: System Data Reset */}
+        <Card className="border-rose-300 dark:border-rose-900/60 bg-gradient-to-br from-rose-50/50 via-white to-amber-50/20 dark:from-rose-950/20 dark:via-[#231b15] dark:to-transparent">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="flex items-start gap-3.5">
+              <div className="p-3 rounded-2xl bg-rose-100 dark:bg-rose-900/50 text-rose-700 dark:text-rose-300 shrink-0">
+                <ShieldAlert className="w-6 h-6" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <h3 className="text-base font-black text-rose-950 dark:text-rose-100">
+                    منطقة التحكم الحساسة: تصفير وإعادة ضبط بيانات الموقع
+                  </h3>
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-rose-200/80 dark:bg-rose-900/80 text-rose-800 dark:text-rose-200">
+                    للمشرف العام فقط
+                  </span>
+                </div>
+                <p className="text-xs text-brown-600 dark:text-brown-400 mt-1 max-w-2xl leading-relaxed">
+                  إمكانية مسح كافة بيانات الحضور والغياب، الاجتماعات، الامتحانات، خطط القراءة، الإشعارات، وحسابات المخدومين لبدء دورة أو سنة كنسية جديدة. الحسابات الإدارية محمية بالكامل وتتطلب العملية كتابة كود الأمان المخصص.
+                </p>
+              </div>
+            </div>
+
+            <Button
+              variant="danger"
+              size="md"
+              onClick={() => {
+                setConfirmCodeInput('');
+                setResetError(null);
+                setResetSuccess(null);
+                setIsResetModalOpen(true);
+              }}
+              leftIcon={<RotateCcw className="w-4 h-4" />}
+              className="shrink-0 bg-rose-700 hover:bg-rose-800 text-white font-bold"
+            >
+              تصفير بيانات الموقع...
+            </Button>
+          </div>
+        </Card>
       </div>
+
+      {/* Reset All Data Modal */}
+      {isResetModalOpen && (
+        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-[#231b15] border border-rose-300 dark:border-rose-900/80 rounded-3xl max-w-lg w-full p-6 shadow-2xl space-y-5 animate-in fade-in duration-200">
+            {/* Modal Header */}
+            <div className="flex items-start justify-between">
+              <div className="flex items-center gap-3">
+                <div className="p-3 rounded-2xl bg-rose-100 dark:bg-rose-900/50 text-rose-700 dark:text-rose-300">
+                  <AlertTriangle className="w-6 h-6" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-black text-brown-950 dark:text-brown-50">
+                    تأكيد تصفير وإعادة ضبط كافة البيانات
+                  </h3>
+                  <p className="text-xs text-rose-600 dark:text-rose-400 font-bold mt-0.5">
+                    تحذير أمني: هذا الإجراء جذري ولا يمكن التراجع عنه
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => !isResetting && setIsResetModalOpen(false)}
+                className="text-brown-400 hover:text-brown-600 dark:hover:text-brown-200 transition-colors p-1"
+                disabled={isResetting}
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Warning Breakdown */}
+            <div className="p-4 rounded-2xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 text-xs text-brown-800 dark:text-brown-200 space-y-2">
+              <p className="font-bold text-rose-800 dark:text-rose-300 mb-1">
+                سيقوم هذا الإجراء بمسح العناصر التالية نهائياً:
+              </p>
+              <ul className="list-disc list-inside space-y-1 text-brown-700 dark:text-brown-300 text-[11px] leading-relaxed">
+                <li>كافة سجلات الحضور والغياب ورموز الجلسات الأسبوعية.</li>
+                <li>جميع الامتحانات والأسئلة ودرجات وإجابات المخدومين.</li>
+                <li>خطط قراءة الكتاب المقدس وسجلات إنجاز الإصحاحات.</li>
+                <li>جميع الإشعارات الصادرة واشتراكات التنبيهات.</li>
+                <li>حسابات المخدومين (حسابات المستخدمين العاديين).</li>
+              </ul>
+              <div className="pt-2 border-t border-rose-200/60 dark:border-rose-800/60 flex items-center gap-2 text-emerald-700 dark:text-emerald-400 font-bold text-[11px]">
+                <CheckCircle2 className="w-4 h-4 shrink-0" />
+                <span>حساب المشرف العام وحسابات الخدام ستبقى محفوظة ومحمية بنسبة 100%.</span>
+              </div>
+            </div>
+
+            {/* Confirmation Code Instruction */}
+            <div className="space-y-2">
+              <label className="block text-xs font-bold text-brown-900 dark:text-brown-100">
+                لتأكيد العملية، اكتب كود الأمان التالي كما هو بالضبط:
+              </label>
+              <div className="flex items-center justify-between p-2.5 rounded-xl bg-brown-100/70 dark:bg-brown-950 border border-brown-200 dark:border-brown-800">
+                <span className="font-mono text-xs sm:text-sm font-black text-rose-700 dark:text-rose-400 tracking-wider select-all">
+                  Reset.15.550right
+                </span>
+                <span className="text-[10px] text-brown-500 font-semibold">كود الأمان الإلزامي</span>
+              </div>
+              <input
+                type="text"
+                value={confirmCodeInput}
+                onChange={(e) => setConfirmCodeInput(e.target.value)}
+                placeholder="اكتب: Reset.15.550right"
+                dir="ltr"
+                disabled={isResetting}
+                className="w-full px-3.5 py-2.5 rounded-xl border border-brown-300 dark:border-brown-700 bg-white dark:bg-[#1a1410] text-brown-950 dark:text-brown-50 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-rose-500 transition-all text-center tracking-wider"
+              />
+              {confirmCodeInput && confirmCodeInput !== 'Reset.15.550right' && (
+                <p className="text-[11px] text-rose-600 dark:text-rose-400 font-medium">
+                  الكود المكتوب لا يطابق كود الأمان المطلوب.
+                </p>
+              )}
+              {confirmCodeInput === 'Reset.15.550right' && (
+                <p className="text-[11px] text-emerald-600 dark:text-emerald-400 font-bold flex items-center gap-1">
+                  <CheckCircle2 className="w-3.5 h-3.5" />
+                  الكود مطابق! يمكنك الآن تأكيد عملية التصفير.
+                </p>
+              )}
+            </div>
+
+            {resetError && (
+              <div className="p-3 rounded-xl bg-rose-100 dark:bg-rose-900/60 border border-rose-300 text-rose-800 dark:text-rose-200 text-xs font-bold">
+                {resetError}
+              </div>
+            )}
+
+            {resetSuccess && (
+              <div className="p-3 rounded-xl bg-emerald-100 dark:bg-emerald-900/60 border border-emerald-300 text-emerald-800 dark:text-emerald-200 text-xs font-bold">
+                {resetSuccess}
+              </div>
+            )}
+
+            {/* Modal Actions */}
+            <div className="flex items-center justify-end gap-3 pt-3 border-t border-brown-100 dark:border-brown-900/60">
+              <Button
+                variant="outline"
+                size="md"
+                onClick={() => setIsResetModalOpen(false)}
+                disabled={isResetting}
+              >
+                إلغاء
+              </Button>
+              <Button
+                variant="danger"
+                size="md"
+                onClick={handleExecuteSystemReset}
+                disabled={confirmCodeInput !== 'Reset.15.550right' || isResetting}
+                isLoading={isResetting}
+                leftIcon={<RotateCcw className="w-4 h-4" />}
+                className="bg-rose-700 hover:bg-rose-800 text-white font-bold"
+              >
+                {isResetting ? 'جارٍ تصفير البيانات...' : 'تأكيد تصفير البيانات نهائياً'}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
