@@ -7,8 +7,10 @@ import { supabase } from '@/lib/supabase/client';
 import { normalizePhone, isValidEgyptianPhone } from '@/lib/utils/formatters';
 import { Eye, EyeOff, Lock, Phone, AlertCircle, Loader2, Smartphone } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
+import { usePwaInstall } from '@/hooks/usePwaInstall';
 
 export default function LoginPage() {
+  const { isInstalled } = usePwaInstall();
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -195,14 +197,16 @@ export default function LoginPage() {
 
         {/* Footer info */}
         <div className="mt-8 pt-5 border-t border-brown-100 dark:border-brown-900/60 text-center space-y-3">
-          <button
-            type="button"
-            onClick={() => window.dispatchEvent(new Event('open-pwa-install'))}
-            className="inline-flex items-center gap-2 text-xs font-bold text-amber-900 dark:text-amber-200 hover:text-brown-900 transition-all cursor-pointer bg-amber-50 hover:bg-amber-100 dark:bg-amber-950/50 dark:hover:bg-amber-900/60 px-3.5 py-1.5 rounded-full border border-amber-300/70 dark:border-amber-800/70 shadow-sm"
-          >
-            <Smartphone className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
-            <span>تثبيت التطبيق على جهازك الآن</span>
-          </button>
+          {!isInstalled && (
+            <button
+              type="button"
+              onClick={() => window.dispatchEvent(new Event('open-pwa-install'))}
+              className="inline-flex items-center gap-2 text-xs font-bold text-amber-900 dark:text-amber-200 hover:text-brown-900 transition-all cursor-pointer bg-amber-50 hover:bg-amber-100 dark:bg-amber-950/50 dark:hover:bg-amber-900/60 px-3.5 py-1.5 rounded-full border border-amber-300/70 dark:border-amber-800/70 shadow-sm"
+            >
+              <Smartphone className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
+              <span>تثبيت التطبيق على جهازك الآن</span>
+            </button>
+          )}
 
           <p className="text-xs text-brown-500 dark:text-brown-400">
             الحسابات يتم إنشاؤها وتفعيلها فقط عبر إدارة الخدمة والمشرف العام.

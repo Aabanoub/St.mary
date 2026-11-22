@@ -14,109 +14,57 @@ import {
   Bell,
   WifiOff,
 } from 'lucide-react';
-
-interface BeforeInstallPromptEvent extends Event {
-  prompt: () => Promise<void>;
-  userChoice: Promise<{ outcome: 'accepted' | 'dismissed'; platform: string }>;
-}
+import { usePwaInstall } from '@/hooks/usePwaInstall';
 
 export function InstallPromptModal() {
+  const { isInstalled, deferredPrompt, setDeferredPrompt, isIOS } = usePwaInstall();
   const [isOpen, setIsOpen] = useState(false);
-  const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
-  const [isIOS, setIsIOS] = useState(false);
-  const [isStandalone, setIsStandalone] = useState(false);
   const [isInstalledJustNow, setIsInstalledJustNow] = useState(false);
 
   useEffect(() => {
-    // 1. Check if already installed / running in standalone mode
-    const checkStandalone = () => {
-      const isStandaloneMode =
-        window.matchMedia('(display-mode: standalone)').matches ||
-        (window.navigator as unknown as { standalone?: boolean }).standalone === true ||
-        document.referrer.includes('android-app://');
-
-      setIsStandalone(isStandaloneMode);
-      return isStandaloneMode;
-    };
-
-    if (checkStandalone()) {
-      return; // Already installed, do nothing
+    // If the app is already installed on this device/browser, never open the prompt
+    if (isInstalled) {
+      setIsOpen(false);
+      return;
     }
 
-    // 2. Detect iOS devices (Safari on iOS requires manual Add to Home Screen)
-    const userAgent = window.navigator.userAgent.toLowerCase();
-    const isAppleDevice = /iphone|ipad|ipod/.test(userAgent) && !/crios|fxios|opios/.test(userAgent);
-    setIsIOS(isAppleDevice);
-
-    // 3. Listen for Chrome / Android / Edge install prompt
-    const handleBeforeInstallPrompt = (e: Event) => {
-      e.preventDefault();
-      setDeferredPrompt(e as BeforeInstallPromptEvent);
-
-      // Check if user dismissed in this session
-      const dismissedThisSession = sessionStorage.getItem('pwa_prompt_dismissed');
-      if (!dismissedThisSession) {
-        // Show after a gentle 1.2s delay for great UX
-        const timer = setTimeout(() => {
-          setIsOpen(true);
-        }, 1200);
-        return () => clearTimeout(timer);
-      }
-    };
-
-    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
-
-    // 4. For iOS or browsers where beforeinstallprompt doesn't fire immediately,
-    // show the prompt if not in standalone and not dismissed
+    // Check if dismissed during current session
     const dismissedThisSession = sessionStorage.getItem('pwa_prompt_dismissed');
     if (!dismissedThisSession) {
-      const fallbackTimer = setTimeout(() => {
-        if (!checkStandalone()) {
-          setIsOpen(true);
-        }
-      }, 1500);
+      // Gentle entrance delay for smooth user experience
+      const timer = setTimeout(() => {
+        setIsOpen(true);
+      }, 1400);
 
-      return () => {
-        clearTimeout(fallbackTimer);
-        window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
-      };
+      return () => clearTimeout(timer);
     }
 
-    // 5. Listen for successful install
-    const handleAppInstalled = () => {
-      setIsInstalledJustNow(true);
-      setDeferredPrompt(null);
-      setTimeout(() => {
-        setIsOpen(false);
-      }, 3000);
-    };
-
-    window.addEventListener('appinstalled', handleAppInstalled);
-
-    // 6. Support opening modal manually from anywhere in the app
+    // Support manual trigger from custom event
     const handleManualOpen = () => {
-      setIsOpen(true);
+      if (!isInstalled) {
+        setIsOpen(true);
+      }
     };
     window.addEventListener('open-pwa-install', handleManualOpen);
 
     return () => {
-      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
-      window.removeEventListener('appinstalled', handleAppInstalled);
       window.removeEventListener('open-pwa-install', handleManualOpen);
     };
-  }, []);
+  }, [isInstalled]);
 
   const handleInstallClick = async () => {
     if (deferredPrompt) {
-      // Chrome / Edge / Android native prompt
       try {
         await deferredPrompt.prompt();
         const choice = await deferredPrompt.userChoice;
         if (choice.outcome === 'accepted') {
           setIsInstalledJustNow(true);
+          try {
+            localStorage.setItem('pwa_installed_on_device', 'true');
+          } catch {}
           setTimeout(() => {
             setIsOpen(false);
-          }, 2500);
+          }, 2000);
         }
         setDeferredPrompt(null);
       } catch (err) {
@@ -130,17 +78,17 @@ export function InstallPromptModal() {
     setIsOpen(false);
   };
 
-  // If running in standalone app mode, render nothing
-  if (isStandalone) {
+  // IF ALREADY INSTALLED, REMOVE COMPLETELY (NO MODAL, NO FLOATING BUTTON)
+  if (isInstalled) {
     return null;
   }
 
-  // Floating small badge if dismissed but not standalone (allows user to install anytime)
+  // Floating small badge if dismissed but not installed (allows installing later)
   if (!isOpen) {
     return (
       <button
         onClick={() => setIsOpen(true)}
-        className="fixed bottom-20 lg:bottom-6 left-4 z-40 flex items-center gap-2 px-3 py-2 bg-brown-800 hover:bg-brown-900 text-white rounded-full shadow-warm-lg border border-amber-500/30 text-xs font-semibold transition-all hover:scale-105 active:scale-95 animate-fade-in"
+        className="fixed bottom-20 lg:bottom-6 left-4 z-40 flex items-center gap-2 px-3 py-2 bg-brown-800 hover:bg-brown-900 text-white rounded-full shadow-warm-lg border border-amber-500/30 text-xs font-semibold transition-all hover:scale-105 active:scale-95 animate-fade-in cursor-pointer"
         title="تثبيت التطبيق على جهازك"
       >
         <Smartphone className="w-4 h-4 text-amber-300" />
@@ -292,7 +240,7 @@ export function InstallPromptModal() {
                 </div>
                 <button
                   onClick={handleDismiss}
-                  className="w-full py-2.5 px-4 rounded-xl font-bold text-xs text-white bg-brown-800 hover:bg-brown-900 transition-colors"
+                  className="w-full py-2.5 px-4 rounded-xl font-bold text-xs text-white bg-brown-800 hover:bg-brown-900 transition-colors cursor-pointer"
                 >
                   فهمت ذلك، شكراً
                 </button>
