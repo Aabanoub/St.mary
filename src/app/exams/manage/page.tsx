@@ -320,7 +320,8 @@ export default function ManageExamsPage() {
         await loadSubmissions(selectedExam.id);
       }
     } catch (err: unknown) {
-      alert(err instanceof Error ? err.message : 'حدث خطأ أثناء اعتماد الدرجة');
+      const msg = (err as any)?.message || (err instanceof Error ? err.message : 'حدث خطأ أثناء اعتماد الدرجة');
+      alert(msg);
     } finally {
       setIsSavingGrade(false);
     }
