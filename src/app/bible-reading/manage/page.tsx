@@ -72,6 +72,7 @@ export default function ManageReadingPlansPage() {
   const [endChapterNum, setEndChapterNum] = useState(1);
   const [assignStartDate, setAssignStartDate] = useState('');
   const [isAddingChapters, setIsAddingChapters] = useState(false);
+  const [isDeletingPlanId, setIsDeletingPlanId] = useState<string | null>(null);
 
   const isSuperAdmin = role === 'super_admin';
   const canCreatePlans = isSuperAdmin || hasPermission('create_reading_plans');
@@ -204,6 +205,57 @@ export default function ManageReadingPlansPage() {
     if (selectedPlan) await loadChapters(selectedPlan.id);
   };
 
+  const handleDeletePlan = async (plan: any, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+
+    if (!canEditPlans) {
+      alert('ليس لديك صلاحية لحذف خطط القراءة.');
+      return;
+    }
+
+    if (
+      !confirm(
+        `هل أنت متأكد من رغبتك بحذف خطة «${plan.title}»؟\n\nتنبيه: سيتم حذف الخطة وجميع إصحاحاتها وسجلات قراءة المخدومين المرتبطة بها نهائياً ولا يمكن التراجع عن ذلك.`
+      )
+    ) {
+      return;
+    }
+
+    setIsDeletingPlanId(plan.id);
+
+    try {
+      const { error } = await supabase.from('reading_plans').delete().eq('id', plan.id);
+      if (error) throw error;
+
+      // Log activity
+      await supabase.from('activity_logs').insert({
+        actor_id: profile?.id,
+        action: 'DELETE_READING_PLAN',
+        entity_type: 'reading_plan',
+        entity_id: plan.id,
+        details: { plan_title: plan.title },
+      });
+
+      // Update local state
+      const remaining = plans.filter((p) => p.id !== plan.id);
+      setPlans(remaining);
+
+      if (selectedPlan?.id === plan.id) {
+        const next = remaining.length > 0 ? remaining[0] : null;
+        setSelectedPlan(next);
+        if (next) {
+          await loadChapters(next.id);
+        } else {
+          setChapters([]);
+        }
+      }
+    } catch (err: unknown) {
+      alert(err instanceof Error ? err.message : 'حدث خطأ أثناء حذف الخطة');
+    } finally {
+      setIsDeletingPlanId(null);
+    }
+  };
+
   if (!canManage) {
     return (
       <AppShell>
@@ -283,23 +335,37 @@ export default function ManageReadingPlansPage() {
               <div className="space-y-2.5">
                 {plans.map((p) => {
                   const isSelected = selectedPlan?.id === p.id;
+                  const isDeleting = isDeletingPlanId === p.id;
                   return (
                     <div
                       key={p.id}
                       onClick={() => handleSelectPlan(p)}
-                      className={`p-3.5 rounded-xl border transition-all cursor-pointer ${
+                      className={`p-3.5 rounded-xl border transition-all cursor-pointer relative group ${
                         isSelected
                           ? 'border-brown-600 bg-brown-50 dark:bg-brown-900/40 shadow-sm'
                           : 'border-brown-200 dark:border-brown-800 hover:border-brown-400 bg-white dark:bg-[#231b15]'
                       }`}
                     >
-                      <div className="flex items-center justify-between mb-1">
-                        <h4 className="text-sm font-bold text-brown-950 dark:text-brown-50">
+                      <div className="flex items-center justify-between gap-2 mb-1">
+                        <h4 className="text-sm font-bold text-brown-950 dark:text-brown-50 truncate flex-1">
                           {p.title}
                         </h4>
-                        <Badge variant={p.is_active ? 'success' : 'default'} size="sm">
-                          {p.is_active ? 'نشطة' : 'متوقفة'}
-                        </Badge>
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          <Badge variant={p.is_active ? 'success' : 'default'} size="sm">
+                            {p.is_active ? 'نشطة' : 'متوقفة'}
+                          </Badge>
+                          {canEditPlans && (
+                            <button
+                              type="button"
+                              onClick={(e) => handleDeletePlan(p, e)}
+                              disabled={isDeleting}
+                              className="p-1 rounded-md text-brown-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors cursor-pointer"
+                              title={`حذف خطة ${p.title}`}
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+                        </div>
                       </div>
                       <p className="text-xs text-brown-500 line-clamp-1 mb-2">
                         {p.description || 'بدون وصف'}
@@ -322,17 +388,29 @@ export default function ManageReadingPlansPage() {
               icon={<Calendar className="w-5 h-5" />}
               action={
                 selectedPlan && canEditPlans ? (
-                  <Button
-                    variant="primary"
-                    size="sm"
-                    onClick={() => {
-                      setAssignStartDate(new Date().toISOString().split('T')[0]);
-                      setIsChapterModalOpen(true);
-                    }}
-                    leftIcon={<Plus className="w-4 h-4" />}
-                  >
-                    تعيين إصحاحات
-                  </Button>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleDeletePlan(selectedPlan)}
+                      disabled={isDeletingPlanId === selectedPlan.id}
+                      leftIcon={<Trash2 className="w-4 h-4 text-rose-500" />}
+                      className="text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 border-rose-200 dark:border-rose-900 font-bold"
+                    >
+                      حذف الخطة
+                    </Button>
+                    <Button
+                      variant="primary"
+                      size="sm"
+                      onClick={() => {
+                        setAssignStartDate(new Date().toISOString().split('T')[0]);
+                        setIsChapterModalOpen(true);
+                      }}
+                      leftIcon={<Plus className="w-4 h-4" />}
+                    >
+                      تعيين إصحاحات
+                    </Button>
+                  </div>
                 ) : null
               }
             />
