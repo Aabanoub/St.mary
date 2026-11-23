@@ -9,7 +9,7 @@ import { Card, CardHeader } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { Modal } from '@/components/ui/Modal';
-import { BookOpen, Plus, Trash2, Edit2, Calendar, ArrowLeft } from 'lucide-react';
+import { BookOpen, Plus, Trash2, Edit2, Calendar, ArrowLeft, AlertTriangle } from 'lucide-react';
 import { formatDateArabic, formatShortDateArabic } from '@/lib/utils/formatters';
 
 const COPTIC_BIBLE_BOOKS = [
@@ -73,10 +73,10 @@ export default function ManageReadingPlansPage() {
   const [assignStartDate, setAssignStartDate] = useState('');
   const [isAddingChapters, setIsAddingChapters] = useState(false);
 
-  const canManage =
-    role === 'super_admin' ||
-    hasPermission('create_reading_plans') ||
-    hasPermission('edit_reading_plans');
+  const isSuperAdmin = role === 'super_admin';
+  const canCreatePlans = isSuperAdmin || hasPermission('create_reading_plans');
+  const canEditPlans = isSuperAdmin || hasPermission('edit_reading_plans');
+  const canManage = canCreatePlans || canEditPlans;
 
   const fetchPlans = async () => {
     try {
@@ -123,6 +123,10 @@ export default function ManageReadingPlansPage() {
 
   const handleCreatePlan = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!canCreatePlans) {
+      alert('ليس لديك صلاحية لإنشاء خطة قراءة جديدة.');
+      return;
+    }
     if (!planTitle || !planStartDate || !planEndDate) return;
     setIsSavingPlan(true);
 
@@ -155,6 +159,10 @@ export default function ManageReadingPlansPage() {
 
   const handleAddChaptersBatch = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!canEditPlans) {
+      alert('ليس لديك صلاحية لتعديل خطة القراءة أو تعيين إصحاحات جديدة بها.');
+      return;
+    }
     if (!selectedPlan || !assignStartDate) return;
     setIsAddingChapters(true);
 
@@ -187,6 +195,10 @@ export default function ManageReadingPlansPage() {
   };
 
   const handleDeleteChapter = async (chapId: string) => {
+    if (!canEditPlans) {
+      alert('ليس لديك صلاحية لحذف إصحاحات من خطة القراءة.');
+      return;
+    }
     if (!confirm('هل ترغب بحذف هذا الإصحاح من الخطة؟')) return;
     await supabase.from('reading_plan_chapters').delete().eq('id', chapId);
     if (selectedPlan) await loadChapters(selectedPlan.id);
@@ -225,23 +237,35 @@ export default function ManageReadingPlansPage() {
                 عرض تجربة المخدوم
               </Button>
             </Link>
-            <Button
-              variant="primary"
-              size="md"
-              onClick={() => {
-                const now = new Date();
-                setPlanStartDate(now.toISOString().split('T')[0]);
-                const nextMonth = new Date();
-                nextMonth.setDate(nextMonth.getDate() + 30);
-                setPlanEndDate(nextMonth.toISOString().split('T')[0]);
-                setIsPlanModalOpen(true);
-              }}
-              leftIcon={<Plus className="w-4 h-4" />}
-            >
-              خطة قراءة جديدة
-            </Button>
+            {canCreatePlans && (
+              <Button
+                variant="primary"
+                size="md"
+                onClick={() => {
+                  const now = new Date();
+                  setPlanStartDate(now.toISOString().split('T')[0]);
+                  const nextMonth = new Date();
+                  nextMonth.setDate(nextMonth.getDate() + 30);
+                  setPlanEndDate(nextMonth.toISOString().split('T')[0]);
+                  setIsPlanModalOpen(true);
+                }}
+                leftIcon={<Plus className="w-4 h-4" />}
+              >
+                خطة قراءة جديدة
+              </Button>
+            )}
           </div>
         </div>
+
+        {/* Permission Warning Banner if can create but cannot edit */}
+        {!canEditPlans && (
+          <div className="flex items-center gap-2.5 p-3.5 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-800 text-xs font-semibold text-amber-950 dark:text-amber-200">
+            <AlertTriangle className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0" />
+            <span>
+              <strong>وضع الصلاحيات المقيد:</strong> ليس لديك صلاحية تعديل خطط القراءة الحالية أو إضافة وحذف الإصحاحات منها. صلاحيتك الحالية تتيح فقط تأليف خطة جديدة.
+            </span>
+          </div>
+        )}
 
         {/* Layout: Plans List & Plan Details */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -297,7 +321,7 @@ export default function ManageReadingPlansPage() {
               subtitle={selectedPlan ? `${chapters.length} إصحاح معين بالخطة` : ''}
               icon={<Calendar className="w-5 h-5" />}
               action={
-                selectedPlan ? (
+                selectedPlan && canEditPlans ? (
                   <Button
                     variant="primary"
                     size="sm"
@@ -330,13 +354,15 @@ export default function ManageReadingPlansPage() {
                       </span>
                     </div>
 
-                    <button
-                      onClick={() => handleDeleteChapter(ch.id)}
-                      className="p-1.5 text-rose-500 hover:text-rose-700 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-lg transition-colors cursor-pointer"
-                      title="حذف الإصحاح"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
+                    {canEditPlans && (
+                      <button
+                        onClick={() => handleDeleteChapter(ch.id)}
+                        className="p-1.5 text-rose-500 hover:text-rose-700 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-lg transition-colors cursor-pointer"
+                        title="حذف الإصحاح"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    )}
                   </div>
                 ))}
               </div>

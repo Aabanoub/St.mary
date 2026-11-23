@@ -90,6 +90,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   useEffect(() => {
+    let permChannel: ReturnType<typeof supabase.channel> | null = null;
+
     // Initial session check
     supabase.auth.getSession().then(({ data: { session } }) => {
       const currentUser = session?.user ?? null;
@@ -98,6 +100,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         fetchProfileAndPermissions(currentUser.id).finally(() => {
           setIsLoading(false);
         });
+
+        // Realtime listener for permission updates on this user
+        permChannel = supabase
+          .channel(`admin_perms_realtime_${currentUser.id}`)
+          .on(
+            'postgres_changes',
+            {
+              event: '*',
+              schema: 'public',
+              table: 'admin_permissions',
+              filter: `admin_id=eq.${currentUser.id}`,
+            },
+            () => {
+              fetchProfileAndPermissions(currentUser.id);
+            }
+          )
+          .subscribe();
       } else {
         setIsLoading(false);
       }
@@ -118,8 +137,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setIsLoading(false);
     });
 
+    // Re-check permissions when switching back to this tab
+    const handleVisibilityOrFocus = () => {
+      if (document.visibilityState === 'visible') {
+        supabase.auth.getSession().then(({ data: { session } }) => {
+          if (session?.user) {
+            fetchProfileAndPermissions(session.user.id);
+          }
+        });
+      }
+    };
+
+    window.addEventListener('focus', handleVisibilityOrFocus);
+    window.addEventListener('visibilitychange', handleVisibilityOrFocus);
+
     return () => {
       subscription.unsubscribe();
+      if (permChannel) supabase.removeChannel(permChannel);
+      window.removeEventListener('focus', handleVisibilityOrFocus);
+      window.removeEventListener('visibilitychange', handleVisibilityOrFocus);
     };
   }, [fetchProfileAndPermissions]);
 

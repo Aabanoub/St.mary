@@ -42,10 +42,9 @@ export default function BibleReadingPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [togglingId, setTogglingId] = useState<string | null>(null);
 
-  const canManage =
-    role === 'super_admin' ||
-    hasPermission('create_reading_plans') ||
-    hasPermission('edit_reading_plans');
+  const canCreatePlans = role === 'super_admin' || hasPermission('create_reading_plans');
+  const canEditPlans = role === 'super_admin' || hasPermission('edit_reading_plans');
+  const canManage = canCreatePlans || canEditPlans;
 
   const fetchReadingData = async () => {
     if (!profile) return;
@@ -186,7 +185,7 @@ export default function BibleReadingPage() {
           {canManage && (
             <Link href="/bible-reading/manage">
               <Button variant="primary" size="md">
-                إدارة الخطط وتعيين الإصحاحات
+                {canEditPlans ? 'إدارة الخطط وتعيين الإصحاحات' : 'إنشاء خطة قراءة جديدة'}
               </Button>
             </Link>
           )}

@@ -118,22 +118,20 @@ export default function AdminPermissionsPage() {
     setSaveSuccess(false);
 
     try {
-      // Upsert permissions
-      for (const p of ALL_PERMISSIONS) {
-        const isGranted = !!permissionsMap[p.key];
-        const expiry = expiryDates[p.key] ? new Date(expiryDates[p.key]).toISOString() : null;
+      // Upsert permissions in a single atomic batch
+      const rows = ALL_PERMISSIONS.map((p) => ({
+        admin_id: selectedAdmin.id,
+        permission: p.key,
+        granted: !!permissionsMap[p.key],
+        valid_until: expiryDates[p.key] ? new Date(expiryDates[p.key]).toISOString() : null,
+        updated_at: new Date().toISOString(),
+      }));
 
-        await supabase.from('admin_permissions').upsert(
-          {
-            admin_id: selectedAdmin.id,
-            permission: p.key,
-            granted: isGranted,
-            valid_until: expiry,
-            updated_at: new Date().toISOString(),
-          },
-          { onConflict: 'admin_id, permission' }
-        );
-      }
+      const { error: upsertErr } = await supabase
+        .from('admin_permissions')
+        .upsert(rows, { onConflict: 'admin_id, permission' });
+
+      if (upsertErr) throw upsertErr;
 
       // Log activity
       await supabase.from('activity_logs').insert({
