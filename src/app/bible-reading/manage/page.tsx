@@ -9,8 +9,9 @@ import { Card, CardHeader } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { Modal } from '@/components/ui/Modal';
-import { BookOpen, Plus, Trash2, Edit2, Calendar, ArrowLeft, AlertTriangle } from 'lucide-react';
+import { BookOpen, Plus, Trash2, Edit2, Calendar, ArrowLeft, AlertTriangle, Users } from 'lucide-react';
 import { formatDateArabic, formatShortDateArabic } from '@/lib/utils/formatters';
+import { ChapterReadersModal } from '@/components/bible-reading/ChapterReadersModal';
 
 const COPTIC_BIBLE_BOOKS = [
   'إنجيل متى',
@@ -77,7 +78,9 @@ export default function ManageReadingPlansPage() {
   const isSuperAdmin = role === 'super_admin';
   const canCreatePlans = isSuperAdmin || hasPermission('create_reading_plans');
   const canEditPlans = isSuperAdmin || hasPermission('edit_reading_plans');
+  const canViewProgress = isSuperAdmin || hasPermission('view_reading_progress');
   const canManage = canCreatePlans || canEditPlans;
+  const [inspectingChapter, setInspectingChapter] = useState<any | null>(null);
 
   const fetchPlans = async () => {
     try {
@@ -432,15 +435,29 @@ export default function ManageReadingPlansPage() {
                       </span>
                     </div>
 
-                    {canEditPlans && (
-                      <button
-                        onClick={() => handleDeleteChapter(ch.id)}
-                        className="p-1.5 text-rose-500 hover:text-rose-700 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-lg transition-colors cursor-pointer"
-                        title="حذف الإصحاح"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    )}
+                    <div className="flex items-center gap-2">
+                      {canViewProgress && (
+                        <button
+                          type="button"
+                          onClick={() => setInspectingChapter(ch)}
+                          className="px-2.5 py-1 text-xs text-brown-700 dark:text-brown-300 hover:text-brown-950 dark:hover:text-brown-50 hover:bg-brown-100 dark:hover:bg-brown-800/60 rounded-lg flex items-center gap-1.5 font-bold transition-colors cursor-pointer border border-brown-200 dark:border-brown-700"
+                          title="عرض كشف من قرأ هذا الإصحاح"
+                        >
+                          <Users className="w-3.5 h-3.5 text-brown-600 dark:text-brown-400" />
+                          <span>سجل القراء 👥</span>
+                        </button>
+                      )}
+
+                      {canEditPlans && (
+                        <button
+                          onClick={() => handleDeleteChapter(ch.id)}
+                          className="p-1.5 text-rose-500 hover:text-rose-700 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-lg transition-colors cursor-pointer"
+                          title="حذف الإصحاح"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      )}
+                    </div>
                   </div>
                 ))}
               </div>
@@ -602,6 +619,13 @@ export default function ManageReadingPlansPage() {
             </div>
           </form>
         </Modal>
+
+        {/* Chapter Readers Inspector Modal */}
+        <ChapterReadersModal
+          isOpen={!!inspectingChapter}
+          onClose={() => setInspectingChapter(null)}
+          chapter={inspectingChapter}
+        />
       </div>
     </AppShell>
   );

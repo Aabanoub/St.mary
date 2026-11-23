@@ -75,6 +75,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             'correct_attendance',
             'create_reading_plans',
             'edit_reading_plans',
+            'view_reading_progress',
             'create_exams',
             'edit_exams',
             'view_exam_results',

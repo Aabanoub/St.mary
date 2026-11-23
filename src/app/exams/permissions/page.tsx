@@ -26,6 +26,7 @@ const ALL_PERMISSIONS: { key: AdminPermission; label: string; desc: string }[] =
   { key: 'correct_attendance', label: 'تصحيح وتعديل الحضور', desc: 'تعديل حالة الحضور وحل الأخطاء' },
   { key: 'create_reading_plans', label: 'إنشاء خطط القراءة', desc: 'تأليف خطط قراءة جديدة وتعيين إصحاحات' },
   { key: 'edit_reading_plans', label: 'تعديل خطط القراءة', desc: 'تعديل وحذف خطط القراءة المنشورة' },
+  { key: 'view_reading_progress', label: 'متابعة قراء الإصحاحات', desc: 'الاطلاع على كشف من قرأ الإصحاح وتتبع التزام المخدومين' },
   { key: 'create_exams', label: 'إنشاء وبناء الامتحانات (خادم مصحح)', desc: 'إعداد وبناء أسئلة الامتحانات وتعيين درجاتها' },
   { key: 'edit_exams', label: 'تعديل ونشر الامتحانات', desc: 'تعديل الأسئلة والدرجات ونشر وإلغاء نشر الامتحانات' },
   { key: 'view_exam_results', label: 'تصحيح واعتماد درجات الامتحانات', desc: 'مراجعة أوراق الإجابات وتصحيح الأسئلة المقالية واعتماد النتيجة للمخدومين' },

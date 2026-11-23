@@ -19,8 +19,10 @@ import {
   Lock,
   ArrowRight,
   AlertCircle,
+  Users,
 } from 'lucide-react';
 import { formatShortDateArabic, formatDateArabic } from '@/lib/utils/formatters';
+import { ChapterReadersModal } from '@/components/bible-reading/ChapterReadersModal';
 
 // Cairo timezone YYYY-MM-DD
 const getCairoDateStr = () => {
@@ -44,7 +46,9 @@ export default function BibleReadingPage() {
 
   const canCreatePlans = role === 'super_admin' || hasPermission('create_reading_plans');
   const canEditPlans = role === 'super_admin' || hasPermission('edit_reading_plans');
+  const canViewProgress = role === 'super_admin' || hasPermission('view_reading_progress');
   const canManage = canCreatePlans || canEditPlans;
+  const [inspectingChapter, setInspectingChapter] = useState<any | null>(null);
 
   const fetchReadingData = async () => {
     if (!profile) return;
@@ -305,29 +309,43 @@ export default function BibleReadingPage() {
               {todayChapters.length > 0 && (
                 <div className="shrink-0 flex flex-col gap-2">
                   {todayChapters.map((tc) => (
-                    <Button
-                      key={tc.id}
-                      variant={tc.is_completed ? 'secondary' : 'primary'}
-                      size="lg"
-                      onClick={() => handleToggleComplete(tc)}
-                      disabled={togglingId === tc.id}
-                      leftIcon={
-                        tc.is_completed ? (
-                          <CheckCircle2 className="w-5 h-5 text-emerald-600" />
-                        ) : (
-                          <Check className="w-5 h-5" />
-                        )
-                      }
-                      className={`font-bold transition-all shadow-warm cursor-pointer ${
-                        tc.is_completed
-                          ? 'bg-emerald-100 hover:bg-emerald-200 text-emerald-900 border-emerald-300 dark:bg-emerald-950/60 dark:text-emerald-200 dark:border-emerald-800'
-                          : 'bg-amber-600 hover:bg-amber-700 text-white'
-                      }`}
-                    >
-                      {tc.is_completed
-                        ? '✓ تم قراءة إصحاح اليوم (انقر للإلغاء)'
-                        : 'اضغط هنا بعد قراءة الإصحاح لتأكيد القراءة'}
-                    </Button>
+                    <div key={tc.id} className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+                      <Button
+                        variant={tc.is_completed ? 'secondary' : 'primary'}
+                        size="lg"
+                        onClick={() => handleToggleComplete(tc)}
+                        disabled={togglingId === tc.id}
+                        leftIcon={
+                          tc.is_completed ? (
+                            <CheckCircle2 className="w-5 h-5 text-emerald-600" />
+                          ) : (
+                            <Check className="w-5 h-5" />
+                          )
+                        }
+                        className={`font-bold transition-all shadow-warm cursor-pointer ${
+                          tc.is_completed
+                            ? 'bg-emerald-100 hover:bg-emerald-200 text-emerald-900 border-emerald-300 dark:bg-emerald-950/60 dark:text-emerald-200 dark:border-emerald-800'
+                            : 'bg-amber-600 hover:bg-amber-700 text-white'
+                        }`}
+                      >
+                        {tc.is_completed
+                          ? '✓ تم قراءة إصحاح اليوم (انقر للإلغاء)'
+                          : 'اضغط هنا بعد قراءة الإصحاح لتأكيد القراءة'}
+                      </Button>
+
+                      {canViewProgress && (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="lg"
+                          onClick={() => setInspectingChapter(tc)}
+                          leftIcon={<Users className="w-4 h-4 text-brown-600 dark:text-brown-400" />}
+                          className="font-bold border-brown-300 dark:border-brown-700 bg-white/80 dark:bg-[#1a120c] hover:bg-brown-100 dark:hover:bg-brown-900/40 text-brown-900 dark:text-brown-100 whitespace-nowrap cursor-pointer shadow-xs"
+                        >
+                          من قرأ إصحاح اليوم؟ 👥
+                        </Button>
+                      )}
+                    </div>
                   ))}
                 </div>
               )}
@@ -533,12 +551,26 @@ export default function BibleReadingPage() {
                       </div>
                     </div>
 
-                    <Badge
-                      variant={isFuture ? 'default' : ch.is_completed ? 'success' : isOverdue ? 'danger' : 'default'}
-                      size="sm"
-                    >
-                      {isFuture ? 'يفتح في موعده' : ch.is_completed ? 'تمت القراءة' : isOverdue ? 'متأخر' : 'لم تقرأ بعد'}
-                    </Badge>
+                    <div className="flex items-center gap-2">
+                      {canViewProgress && (
+                        <button
+                          type="button"
+                          onClick={() => setInspectingChapter(ch)}
+                          className="px-2 py-1 text-xs text-brown-700 dark:text-brown-300 hover:text-brown-950 dark:hover:text-brown-50 hover:bg-brown-100 dark:hover:bg-brown-800/60 rounded-lg flex items-center gap-1 font-bold transition-colors cursor-pointer border border-brown-200 dark:border-brown-700"
+                          title="كشف من قرأ هذا الإصحاح"
+                        >
+                          <Users className="w-3.5 h-3.5 text-brown-600 dark:text-brown-400" />
+                          <span className="hidden sm:inline">من قرأ؟</span>
+                        </button>
+                      )}
+
+                      <Badge
+                        variant={isFuture ? 'default' : ch.is_completed ? 'success' : isOverdue ? 'danger' : 'default'}
+                        size="sm"
+                      >
+                        {isFuture ? 'يفتح في موعده' : ch.is_completed ? 'تمت القراءة' : isOverdue ? 'متأخر' : 'لم تقرأ بعد'}
+                      </Badge>
+                    </div>
                   </div>
                 );
               })}
@@ -561,6 +593,13 @@ export default function BibleReadingPage() {
           )}
         </Card>
       </div>
+
+      {/* Chapter Readers Inspector Modal */}
+      <ChapterReadersModal
+        isOpen={!!inspectingChapter}
+        onClose={() => setInspectingChapter(null)}
+        chapter={inspectingChapter}
+      />
     </AppShell>
   );
 }
