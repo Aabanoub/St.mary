@@ -233,7 +233,7 @@ export function UserDashboard() {
               أهلاً بك، {profile?.full_name}
             </h1>
             <p className="text-xs sm:text-sm text-brown-200 mt-1 max-w-xl">
-              «كُونُوا أَمَنَاءَ إِلَى الْمَوْتِ فَسَأُعْطِيكَ إِكْلِيلَ الْحَيَاةِ» (رؤ 2: 10). تابع حضورك وقراءاتك وامتحاناتك الروحية.
+              «كُونُوا أَمَنَاءَ إِلَى الْمَوْتِ فَسَأُعْطِيكَ إِكْلِيلَ الْحَيَاةِ» (رؤ 2: 10). تابع حضورك وقراءاتك وامتحاناتك.
             </p>
           </div>
           <div className="shrink-0 flex items-center gap-3">
