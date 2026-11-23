@@ -87,6 +87,36 @@ export default function LoginPage() {
     }
   };
 
+  const handleQuickLogin = async (quickPhone: string, quickPass: string) => {
+    setPhone(quickPhone);
+    setPassword(quickPass);
+    setError(null);
+    setIsLoading(true);
+
+    try {
+      const email = `${quickPhone}@stmary.app`;
+      const { data, error: authError } = await supabase.auth.signInWithPassword({
+        email,
+        password: quickPass,
+      });
+
+      if (authError) {
+        setError(authError.message || 'حدث خطأ أثناء تسجيل الدخول.');
+        setIsLoading(false);
+        return;
+      }
+
+      if (data.user) {
+        router.push('/dashboard');
+      }
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'حدث خطأ غير متوقع.';
+      setError(message);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return (
     <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-b from-[#fbf8f5] via-[#f5eee7] to-[#ebdcd0] dark:from-[#18120e] dark:via-[#22140c] dark:to-[#120b07]">
       <div className="w-full max-w-md bg-white dark:bg-[#231b15] border border-brown-200/90 dark:border-brown-900 rounded-3xl p-6 sm:p-8 shadow-warm-xl">
@@ -193,6 +223,42 @@ export default function LoginPage() {
           >
             تسجيل الدخول
           </Button>
+
+          {/* Quick Demo Login Shortcuts */}
+          <div className="pt-4 border-t border-brown-200/80 dark:border-brown-900/60 space-y-2 mt-4">
+            <span className="text-[11px] font-bold text-brown-600 dark:text-brown-400 block text-center">
+              ⚡ تجربة الحسابات السريعة (بنقرة واحدة):
+            </span>
+            <div className="grid grid-cols-3 gap-2">
+              <button
+                type="button"
+                onClick={() => handleQuickLogin('01288680312', 'Sh2121982')}
+                disabled={isLoading}
+                className="p-2 rounded-xl border border-amber-300 dark:border-amber-800 bg-amber-50/70 hover:bg-amber-100 dark:bg-amber-950/40 text-center transition-all cursor-pointer shadow-xs disabled:opacity-50"
+              >
+                <span className="block text-[11px] font-black text-amber-950 dark:text-amber-200">مشرف عام</span>
+                <span className="block text-[9px] text-amber-700 dark:text-amber-400 font-mono">Super Admin</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => handleQuickLogin('01100000002', 'Admin@123456')}
+                disabled={isLoading}
+                className="p-2 rounded-xl border border-brown-300 dark:border-brown-700 bg-brown-50/70 hover:bg-brown-100 dark:bg-brown-900/40 text-center transition-all cursor-pointer shadow-xs disabled:opacity-50"
+              >
+                <span className="block text-[11px] font-black text-brown-950 dark:text-brown-200">مشرف خدمة</span>
+                <span className="block text-[9px] text-brown-600 dark:text-brown-400 font-mono">Admin</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => handleQuickLogin('01211112233', 'User@123456')}
+                disabled={isLoading}
+                className="p-2 rounded-xl border border-emerald-300 dark:border-emerald-800 bg-emerald-50/70 hover:bg-emerald-100 dark:bg-emerald-950/40 text-center transition-all cursor-pointer shadow-xs disabled:opacity-50"
+              >
+                <span className="block text-[11px] font-black text-emerald-950 dark:text-emerald-200">مخدوم</span>
+                <span className="block text-[9px] text-emerald-700 dark:text-emerald-400 font-mono">User</span>
+              </button>
+            </div>
+          </div>
         </form>
 
         {/* Footer info */}
