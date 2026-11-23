@@ -97,18 +97,113 @@ button, a, input, select, textarea {
   animation: scaleUp 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
-/* Print Styles for A4 Reports */
+/* Print Styles for Official Church A4 Reports */
 @media print {
-  body {
-    background: white !important;
-    color: black !important;
+  @page {
+    size: A4 landscape;
+    margin: 8mm 10mm;
   }
-  .no-print {
+
+  *,
+  *::before,
+  *::after {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    box-shadow: none !important;
+    text-shadow: none !important;
+  }
+
+  html,
+  body {
+    background: #ffffff !important;
+    color: #1a120c !important;
+    font-family: var(--font-cairo), system-ui, -apple-system, sans-serif !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    width: 100% !important;
+    height: auto !important;
+  }
+
+  /* Hide navigation, sidebar, topbar, mobile nav, action bars, and buttons */
+  nav,
+  aside,
+  header,
+  footer,
+  .no-print,
+  [role="navigation"],
+  button,
+  input,
+  select {
     display: none !important;
   }
+
+  /* Full width container reset */
+  main {
+    max-width: 100% !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: visible !important;
+  }
+
+  /* Printable container styling */
+  .printable-report {
+    border: none !important;
+    box-shadow: none !important;
+    background: transparent !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+
+  /* Force light colors on elements even if dark mode was active */
+  .dark body,
+  .dark main,
+  .dark .printable-report,
+  .dark table,
+  .dark td,
+  .dark th {
+    background-color: transparent !important;
+    color: #1a120c !important;
+  }
+
+  .dark tr:nth-child(even) td {
+    background-color: #fbf8f5 !important;
+  }
+
+  /* Table rules for clean gridlines and pagination */
+  table {
+    width: 100% !important;
+    border-collapse: collapse !important;
+    page-break-inside: auto;
+  }
+
+  th,
+  td {
+    border: 1px solid #dcd1c7 !important;
+  }
+
+  th {
+    background-color: #5c3822 !important;
+    color: #ffffff !important;
+  }
+
+  tr {
+    page-break-inside: avoid !important;
+    page-break-after: auto;
+  }
+
+  thead {
+    display: table-header-group !important;
+  }
+
+  tfoot {
+    display: table-footer-group !important;
+  }
+
   .print-only {
     display: block !important;
   }
+
   .page-break {
     page-break-after: always;
   }

@@ -19,7 +19,6 @@ import {
   Clock,
   Sparkles,
 } from 'lucide-react';
-import { generateAttendancePdf, AttendanceReportData } from '@/lib/pdf/AttendancePdfGenerator';
 import { exportAttendanceMatrixExcel } from '@/lib/utils/excel';
 import { formatShortDateArabic, formatDateArabic } from '@/lib/utils/formatters';
 
@@ -32,7 +31,6 @@ export default function AttendanceReportsPage() {
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [isLoading, setIsLoading] = useState(true);
-  const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
 
   useEffect(() => {
     const loadReportData = async () => {
@@ -140,26 +138,13 @@ export default function AttendanceReportsPage() {
     buildMatrix(filteredM, attendees, attList || []);
   };
 
-  const handleDownloadPdf = () => {
-    setIsGeneratingPdf(true);
-    try {
-      const data: AttendanceReportData = {
-        churchName: 'كنيسة السيدة العذراء مريم',
-        subtitle: 'خدمة إعداد خدام - تقرير الحضور والغياب الرسمي',
-        dateRange: `من ${startDate || 'البداية'} إلى ${endDate || 'اليوم'}`,
-        totalMeetings: filteredMeetings.length,
-        meetings: filteredMeetings,
-        attendees: reportRows,
-      };
-
-      const doc = generateAttendancePdf(data);
-      doc.save(`تقرير-حضور-إعداد-خدام-${new Date().toISOString().split('T')[0]}.pdf`);
-    } catch (e) {
-      console.error(e);
-      alert('حدث خطأ أثناء إنشاء ملف PDF');
-    } finally {
-      setIsGeneratingPdf(false);
-    }
+  const handlePrint = () => {
+    const originalTitle = document.title;
+    document.title = `تقرير-حضور-إعداد-خدام-${new Date().toISOString().split('T')[0]}`;
+    window.print();
+    setTimeout(() => {
+      document.title = originalTitle;
+    }, 1500);
   };
 
   const handleDownloadExcel = () => {
@@ -170,10 +155,6 @@ export default function AttendanceReportsPage() {
     a.download = `سجل-حضور-إعداد-خدام-${new Date().toISOString().split('T')[0]}.xlsx`;
     a.click();
     URL.revokeObjectURL(url);
-  };
-
-  const handlePrint = () => {
-    window.print();
   };
 
   if (role !== 'super_admin') {
@@ -205,11 +186,11 @@ export default function AttendanceReportsPage() {
 
           <div className="flex flex-wrap items-center gap-2.5">
             <Button
-              variant="outline"
+              variant="primary"
               size="md"
               onClick={handlePrint}
               leftIcon={<Printer className="w-4 h-4" />}
-              className="font-bold"
+              className="font-bold shadow-warm"
             >
               طباعة / حفظ PDF
             </Button>
@@ -221,16 +202,6 @@ export default function AttendanceReportsPage() {
               className="font-bold"
             >
               تصدير Excel
-            </Button>
-            <Button
-              variant="primary"
-              size="md"
-              onClick={handleDownloadPdf}
-              isLoading={isGeneratingPdf}
-              leftIcon={<Download className="w-4 h-4" />}
-              className="font-bold shadow-warm"
-            >
-              تنزيل ملف PDF
             </Button>
           </div>
         </div>
@@ -274,8 +245,16 @@ export default function AttendanceReportsPage() {
           </div>
         </Card>
 
+        {/* Helper Note for PDF (Hidden on Print) */}
+        <div className="no-print flex items-center gap-2.5 p-3 rounded-xl bg-amber-50/80 dark:bg-amber-950/30 border border-amber-200/80 dark:border-amber-900/60 text-xs font-semibold text-amber-900 dark:text-amber-200">
+          <Sparkles className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0" />
+          <span>
+            <strong>لحفظ التقرير كملف PDF رسمي:</strong> اضغط على زر &quot;طباعة / حفظ PDF&quot;، ثم اختر من شاشة الطباعة الوجهة (Destination): <strong>&quot;حفظ بتنسيق PDF&quot; (Save as PDF)</strong> لتنزيل مستند معتمد عالي الدقة بخطوط عربية سليمة 100%.
+          </span>
+        </div>
+
         {/* Official Printable Report View (Visible on Screen & Perfectly Formatted for Print) */}
-        <Card className="p-6 bg-white dark:bg-[#231b15]">
+        <Card className="printable-report p-6 bg-white dark:bg-[#231b15]">
           {/* Official Letterhead Header */}
           <div className="text-center pb-6 mb-6 border-b-2 border-brown-700 dark:border-brown-500">
             <h2 className="text-xl sm:text-2xl font-black text-brown-950 dark:text-brown-50">
