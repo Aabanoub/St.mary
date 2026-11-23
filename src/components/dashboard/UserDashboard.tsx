@@ -501,7 +501,6 @@ export function UserDashboard() {
         <Card>
           <CardHeader
             title="آخر الإعلانات والتنبيهات"
-            subtitle="تنبيهات من أمين الخدمة والمشرفين"
             icon={<Bell className="w-5 h-5" />}
             action={
               <Link href="/notifications">

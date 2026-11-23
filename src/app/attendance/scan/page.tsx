@@ -15,6 +15,7 @@ import {
   CameraOff,
   CheckCircle2,
   AlertCircle,
+  AlertTriangle,
   Clock,
   UserCheck,
   Search,
@@ -38,13 +39,17 @@ export default function ScanAttendancePage() {
 
   // Scan result popup / modal
   const [lastScannedResult, setLastScannedResult] = useState<any>(null);
-  const [resultMessage, setResultMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [resultMessage, setResultMessage] = useState<{
+    type: 'success' | 'error' | 'warning';
+    text: string;
+  } | null>(null);
 
   // Recent scans during this session
   const [sessionScans, setSessionScans] = useState<any[]>([]);
 
   const html5QrCodeRef = useRef<Html5Qrcode | null>(null);
   const isProcessingRef = useRef(false);
+  const lastScannedRef = useRef<{ code: string; time: number }>({ code: '', time: 0 });
 
   // Beep sound function
   const playBeep = (isSuccess = true) => {
@@ -96,7 +101,18 @@ export default function ScanAttendancePage() {
 
       const qrCodeSuccessCallback = async (decodedText: string) => {
         if (isProcessingRef.current) return;
+
+        const now = Date.now();
+        // Prevent continuous rapid scanning of the same code within 4 seconds
+        if (
+          lastScannedRef.current.code === decodedText.trim() &&
+          now - lastScannedRef.current.time < 4000
+        ) {
+          return;
+        }
+
         isProcessingRef.current = true;
+        lastScannedRef.current = { code: decodedText.trim(), time: now };
 
         await processIdentifier(decodedText);
 
@@ -172,6 +188,12 @@ export default function ScanAttendancePage() {
       if (error) {
         setResultMessage({ type: 'error', text: error.message });
         playBeep(false);
+      } else if (data && data.already_recorded) {
+        setResultMessage({
+          type: 'warning',
+          text: data.message || `⚠️ تنبيه: تم تسجيل حضور الخادم (${data.full_name}) مسبقاً في هذا الاجتماع!`,
+        });
+        playBeep(false);
       } else if (data && data.success) {
         setLastScannedResult(data);
         setResultMessage({
@@ -180,18 +202,23 @@ export default function ScanAttendancePage() {
         });
         playBeep(true);
 
-        // Add to session list
-        setSessionScans((prev) => [
-          {
-            ...data,
-            timestamp: new Date().toLocaleTimeString('ar-EG', {
-              hour: '2-digit',
-              minute: '2-digit',
-              second: '2-digit',
-            }),
-          },
-          ...prev,
-        ]);
+        // Add to session list (ensuring uniqueness by user_id)
+        setSessionScans((prev) => {
+          if (prev.some((s) => s.user_id === data.user_id)) {
+            return prev;
+          }
+          return [
+            {
+              ...data,
+              timestamp: new Date().toLocaleTimeString('ar-EG', {
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit',
+              }),
+            },
+            ...prev,
+          ];
+        });
 
         setManualCode('');
       }
@@ -317,11 +344,15 @@ export default function ScanAttendancePage() {
             className={`p-4 rounded-2xl border flex items-center gap-3 animate-in fade-in slide-in-from-top-2 duration-200 ${
               resultMessage.type === 'success'
                 ? 'bg-emerald-50 text-emerald-900 border-emerald-300 dark:bg-emerald-950/60 dark:text-emerald-100 dark:border-emerald-800'
+                : resultMessage.type === 'warning'
+                ? 'bg-amber-50 text-amber-950 border-amber-300 dark:bg-amber-950/60 dark:text-amber-100 dark:border-amber-800'
                 : 'bg-rose-50 text-rose-900 border-rose-300 dark:bg-rose-950/60 dark:text-rose-100 dark:border-rose-800'
             }`}
           >
             {resultMessage.type === 'success' ? (
               <CheckCircle2 className="w-6 h-6 text-emerald-600 dark:text-emerald-400 shrink-0" />
+            ) : resultMessage.type === 'warning' ? (
+              <AlertTriangle className="w-6 h-6 text-amber-600 dark:text-amber-400 shrink-0" />
             ) : (
               <AlertCircle className="w-6 h-6 text-rose-600 dark:text-rose-400 shrink-0" />
             )}
@@ -450,7 +481,7 @@ export default function ScanAttendancePage() {
               {sessionScans.map((scan, idx) => {
                 const cfg = getAttendanceStatusConfig(scan.status);
                 return (
-                  <div key={idx} className="py-2.5 flex items-center justify-between">
+                  <div key={scan.user_id || idx} className="py-2.5 flex items-center justify-between">
                     <div className="flex items-center gap-3">
                       <div className="w-8 h-8 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 font-bold text-xs flex items-center justify-center">
                         {idx + 1}
