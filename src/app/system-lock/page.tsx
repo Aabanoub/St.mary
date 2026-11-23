@@ -43,6 +43,7 @@ export default function SystemLockPage() {
   const [contactInfo, setContactInfo] = useState(lockConfig.contact_info || '');
 
   const [isSaving, setIsSaving] = useState(false);
+  const [isTogglingAdmins, setIsTogglingAdmins] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
 
@@ -124,6 +125,29 @@ export default function SystemLockPage() {
     }
   };
 
+  const handleToggleAllowAdmins = async (newVal: boolean) => {
+    setAllowAdmins(newVal);
+    setIsTogglingAdmins(true);
+    setSaveError(null);
+
+    const res = await updateLockSettings({
+      allow_admins: newVal,
+      title,
+      message,
+      estimated_unlock_time: estimatedUnlockTime,
+      contact_info: contactInfo,
+    });
+
+    setIsTogglingAdmins(false);
+    if (res.success) {
+      setSaveSuccess(true);
+      fetchLogs();
+      setTimeout(() => setSaveSuccess(false), 3000);
+    } else {
+      setSaveError(res.error || 'حدث خطأ أثناء تعديل إذن الخدام');
+    }
+  };
+
   const handleToggleLock = async (shouldLock: boolean) => {
     const confirmMsg = shouldLock
       ? 'هل أنت متأكد من قفل الموقع الآن؟ سيتم حظر المخدومين من الوصول وعرض الرسالة المخصصة.'
@@ -132,7 +156,14 @@ export default function SystemLockPage() {
     if (!confirm(confirmMsg)) return;
 
     setIsSaving(true);
-    const res = await quickToggleLock(shouldLock);
+    const res = await updateLockSettings({
+      is_locked: shouldLock,
+      allow_admins: allowAdmins,
+      title,
+      message,
+      estimated_unlock_time: estimatedUnlockTime,
+      contact_info: contactInfo,
+    });
     setIsSaving(false);
 
     if (res.success) {
@@ -333,22 +364,39 @@ export default function SystemLockPage() {
                 </div>
 
                 {/* Allow Admins Toggle */}
-                <div className="p-3.5 rounded-2xl bg-brown-50 dark:bg-brown-900/30 border border-brown-200 dark:border-brown-800 flex items-start gap-3">
+                <div
+                  className={`p-4 rounded-2xl border transition-all ${
+                    allowAdmins
+                      ? 'bg-emerald-50/70 dark:bg-emerald-950/30 border-emerald-300 dark:border-emerald-800 shadow-xs'
+                      : 'bg-brown-50 dark:bg-brown-900/30 border-brown-200 dark:border-brown-800'
+                  } flex items-start gap-3`}
+                >
                   <input
                     type="checkbox"
                     id="allow_admins"
                     checked={allowAdmins}
-                    onChange={(e) => setAllowAdmins(e.target.checked)}
-                    className="w-4 h-4 mt-0.5 text-brown-700 rounded border-brown-300 focus:ring-brown-600 cursor-pointer"
+                    disabled={isTogglingAdmins}
+                    onChange={(e) => handleToggleAllowAdmins(e.target.checked)}
+                    className="w-5 h-5 mt-0.5 text-brown-700 rounded border-brown-300 focus:ring-brown-600 cursor-pointer"
                   />
-                  <label htmlFor="allow_admins" className="text-xs cursor-pointer select-none">
-                    <strong className="text-brown-950 dark:text-brown-100 block font-bold mb-0.5">
-                      السماح للمشرفين والخدام بالدخول أثناء القفل
-                    </strong>
-                    <span className="text-brown-600 dark:text-brown-400">
-                      إذا تم تفعيل هذا الخيار، سيتمكن الخدام والمشرفون من الدخول للنظام بينما يظل محجوباً عن المخدومين فقط. (افتراضياً: غير مفعل، المشرف العام فقط يدخل).
-                    </span>
-                  </label>
+                  <div className="flex-1">
+                    <label htmlFor="allow_admins" className="cursor-pointer select-none">
+                      <div className="flex items-center gap-2 mb-1">
+                        <strong className="text-sm text-brown-950 dark:text-brown-100 font-bold">
+                          السماح للمشرفين والخدام بالدخول أثناء القفل
+                        </strong>
+                        <Badge variant={allowAdmins ? 'success' : 'default'} size="sm">
+                          {allowAdmins ? '✓ مسموح للخدام' : 'محجوب (المشرف العام فقط)'}
+                        </Badge>
+                        {isTogglingAdmins && (
+                          <span className="text-[10px] text-brown-500 animate-pulse">جاري الحفظ الفوري...</span>
+                        )}
+                      </div>
+                      <span className="text-brown-600 dark:text-brown-400 text-xs block leading-relaxed">
+                        عند تفعيل هذا الخيار، سيتمكن الخدام والمشرفون من الدخول بحساباتهم وتصفح النظام، بينما يظل محجوباً تماماً عن المخدومين فقط. (يتم الحفظ والتطبيق فوراً بمجرد النقر).
+                      </span>
+                    </label>
+                  </div>
                 </div>
 
                 {/* Save Feedback */}

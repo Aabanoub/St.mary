@@ -31,7 +31,7 @@ const SiteLockContext = createContext<SiteLockContextType>({
 });
 
 export function SiteLockProvider({ children }: { children: React.ReactNode }) {
-  const { role, profile } = useAuth();
+  const { role, profile, isLoading: isAuthLoading } = useAuth();
   const [lockConfig, setLockConfig] = useState<SiteLockConfig>(DEFAULT_LOCK_CONFIG);
   const [isLoadingLock, setIsLoadingLock] = useState(true);
 
@@ -93,7 +93,8 @@ export function SiteLockProvider({ children }: { children: React.ReactNode }) {
 
   // Determine whether current user / visitor is blocked from accessing the site
   const isAccessBlocked = useMemo(() => {
-    if (isLoadingLock || !lockConfig.is_locked) {
+    // If lock settings or auth profile are still loading, don't block prematurely
+    if (isLoadingLock || isAuthLoading || !lockConfig.is_locked) {
       return false;
     }
 
@@ -109,7 +110,7 @@ export function SiteLockProvider({ children }: { children: React.ReactNode }) {
 
     // All others (guests, makhdomeen/users, and admins when allow_admins=false) are blocked
     return true;
-  }, [isLoadingLock, lockConfig, role]);
+  }, [isLoadingLock, isAuthLoading, lockConfig, role]);
 
   const updateLockSettings = async (
     updates: Partial<SiteLockConfig>

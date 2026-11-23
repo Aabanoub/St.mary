@@ -182,7 +182,9 @@ export default function LoginPage() {
               <span>وضع الصيانة مفعل: {lockConfig.title}</span>
             </div>
             <p className="leading-relaxed text-amber-800 dark:text-amber-300">
-              تسجيل الدخول متاح للمشرف العام فقط أثناء فترة الصيانة والتحديث.
+              {lockConfig.allow_admins
+                ? 'الموقع مغلق أمام المخدومين. تسجيل الدخول متاح للمشرفين والخدام والمشرف العام.'
+                : 'تسجيل الدخول متاح للمشرف العام فقط أثناء فترة الصيانة والتحديث.'}
             </p>
           </div>
         )}

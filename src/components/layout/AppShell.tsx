@@ -41,6 +41,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   }
 
   const isSuperAdmin = role === 'super_admin';
+  const isAdmin = role === 'admin';
 
   return (
     <div className="min-h-screen flex flex-col bg-[#fbf8f5] dark:bg-[#18120e]">
@@ -64,6 +65,16 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             >
               إلغاء القفل وفتح الموقع
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* Admin Info Banner when site is locked but admins are allowed */}
+      {isAdmin && lockConfig.is_locked && lockConfig.allow_admins && (
+        <div className="bg-amber-700/90 text-amber-50 px-4 py-2 text-xs font-semibold flex items-center justify-between gap-2 shadow-xs sticky top-0 z-50">
+          <div className="flex items-center gap-2">
+            <Lock className="w-3.5 h-3.5 text-amber-300 shrink-0" />
+            <span>تنبيه: الموقع مغلق حالياً أمام المخدومين ({lockConfig.title}). تم السماح لك بالدخول بصفتك خادماً/مشرفاً.</span>
           </div>
         </div>
       )}

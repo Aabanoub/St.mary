@@ -63,7 +63,7 @@ export function SiteLockScreen() {
               leftIcon={<ShieldCheck className="w-3.5 h-3.5 text-amber-600" />}
               className="text-xs font-bold border-amber-300 dark:border-amber-800 hover:bg-amber-50 dark:hover:bg-amber-950/40 cursor-pointer"
             >
-              دخول المشرف العام
+              {lockConfig.allow_admins ? 'دخول الخدام والمشرفين' : 'دخول المشرف العام'}
             </Button>
           </Link>
         )}
