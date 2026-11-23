@@ -61,14 +61,24 @@ export default function BibleReadingPage() {
       setPlans(pList || []);
 
       if (pList && pList.length > 0) {
-        const curPlan = activePlan || pList[0];
+        const curPlan = (activePlan && pList.find((p) => p.id === activePlan.id)) || pList[0];
         setActivePlan(curPlan);
         await loadPlanChapters(curPlan.id, profile.id);
+      } else {
+        setActivePlan(null);
+        setChapters([]);
       }
     } catch (e) {
       console.error(e);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleSelectPlan = async (p: any) => {
+    setActivePlan(p);
+    if (profile) {
+      await loadPlanChapters(p.id, profile.id);
     }
   };
 
@@ -190,6 +200,31 @@ export default function BibleReadingPage() {
             </Link>
           )}
         </div>
+
+        {/* Plans Switcher (if multiple plans exist) */}
+        {plans.length > 1 && (
+          <div className="flex items-center gap-2 overflow-x-auto pb-1">
+            <span className="text-xs font-bold text-brown-600 dark:text-brown-400 shrink-0">
+              اختر الخطة:
+            </span>
+            {plans.map((p) => {
+              const isSelected = activePlan?.id === p.id;
+              return (
+                <button
+                  key={p.id}
+                  onClick={() => handleSelectPlan(p)}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
+                    isSelected
+                      ? 'bg-brown-800 text-white shadow-sm'
+                      : 'bg-white dark:bg-[#231b15] text-brown-700 dark:text-brown-300 border border-brown-200 dark:border-brown-800 hover:border-brown-400'
+                  }`}
+                >
+                  {p.title}
+                </button>
+              );
+            })}
+          </div>
+        )}
 
         {/* Plan Header & Progress Banner */}
         {activePlan && (
