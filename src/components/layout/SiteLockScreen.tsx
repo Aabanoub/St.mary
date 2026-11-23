@@ -86,7 +86,7 @@ export function SiteLockScreen() {
           <div>
             <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-100 dark:bg-amber-950/80 text-amber-900 dark:text-amber-200 text-xs font-bold border border-amber-300 dark:border-amber-800">
               <span className="w-2 h-2 rounded-full bg-amber-600 animate-ping inline-block" />
-              وضع الصيانة والتحديث المؤقت
+              مغلق
             </span>
           </div>
 

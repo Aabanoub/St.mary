@@ -404,7 +404,7 @@ export default function SystemLockPage() {
 
                 <div className="space-y-1.5">
                   <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-200">
-                    وضع الصيانة والتحديث
+                    مغلق
                   </span>
                   <h3 className="text-sm font-black text-brown-950 dark:text-brown-50 leading-tight">
                     {title || 'عنوان الإغلاق...'}
