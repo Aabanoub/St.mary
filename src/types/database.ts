@@ -38,6 +38,7 @@ export interface Meeting {
   meeting_date: string; // YYYY-MM-DD
   status: MeetingStatus;
   notes?: string | null;
+  late_cutoff_time?: string | null; // HH:mm:ss
   created_by?: string | null;
   created_at: string;
   updated_at: string;

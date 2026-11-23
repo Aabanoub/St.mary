@@ -24,14 +24,31 @@ import {
 } from 'lucide-react';
 import { formatDateArabic, getAttendanceStatusConfig } from '@/lib/utils/formatters';
 
+function formatDisplayTime(timeStr?: string | null): string {
+  if (!timeStr) return '';
+  const [hStr, mStr] = timeStr.split(':');
+  let h = parseInt(hStr, 10);
+  const m = mStr || '00';
+  const isPM = h >= 12;
+  if (h === 0) h = 12;
+  else if (h > 12) h -= 12;
+  return `${h.toString().padStart(2, '0')}:${m} ${isPM ? 'م' : 'ص'}`;
+}
+
 export default function ScanAttendancePage() {
   const { profile, hasPermission } = useAuth();
+  const isSuperAdmin = profile?.role === 'super_admin';
+
   const [meetings, setMeetings] = useState<any[]>([]);
   const [selectedMeetingId, setSelectedMeetingId] = useState<string>('');
   const [isScanning, setIsScanning] = useState(false);
   const [cameraError, setCameraError] = useState<string | null>(null);
-  const [scanStatus, setScanStatus] = useState<'present' | 'late'>('present');
+  const [scanStatus, setScanStatus] = useState<'present' | 'late' | 'auto'>('present');
   const [soundEnabled, setSoundEnabled] = useState(true);
+
+  // Late cutoff time setter state (for Super Admin)
+  const [cutoffTimeInput, setCutoffTimeInput] = useState<string>('');
+  const [isSavingCutoff, setIsSavingCutoff] = useState(false);
 
   // Manual code check-in state
   const [manualCode, setManualCode] = useState('');
@@ -91,6 +108,52 @@ export default function ScanAttendancePage() {
 
     fetchMeetings();
   }, []);
+
+  const selectedMeeting = meetings.find((m) => m.id === selectedMeetingId);
+  const hasCutoff = !!selectedMeeting?.late_cutoff_time;
+
+  useEffect(() => {
+    if (selectedMeeting) {
+      setCutoffTimeInput(selectedMeeting.late_cutoff_time?.substring(0, 5) || '');
+      if (selectedMeeting.late_cutoff_time) {
+        setScanStatus('auto');
+      } else {
+        setScanStatus('present');
+      }
+    }
+  }, [selectedMeetingId, meetings]);
+
+  const handleUpdateCutoffTime = async (newTime: string | null) => {
+    if (!selectedMeetingId) return;
+    setIsSavingCutoff(true);
+    try {
+      const { error } = await supabase
+        .from('meetings')
+        .update({ late_cutoff_time: newTime || null })
+        .eq('id', selectedMeetingId);
+
+      if (error) throw error;
+
+      setMeetings((prev) =>
+        prev.map((m) =>
+          m.id === selectedMeetingId ? { ...m, late_cutoff_time: newTime || null } : m
+        )
+      );
+
+      if (newTime) {
+        setScanStatus('auto');
+        alert(`تم تفعيل وتثبيت موعد رصد التأخير التلقائي عند الساعة: ${formatDisplayTime(newTime)}`);
+      } else {
+        setScanStatus('present');
+        alert('تم إلغاء التوقيت التلقائي للاجتماع. أصبح التسجيل يدوياً.');
+      }
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'حدث خطأ في حفظ التوقيت';
+      alert(msg);
+    } finally {
+      setIsSavingCutoff(false);
+    }
+  };
 
   // 2. Start / Stop Camera Scanner
   const startScanner = async () => {
@@ -177,11 +240,16 @@ export default function ScanAttendancePage() {
     setResultMessage(null);
 
     try {
+      let effectiveStatus: string = scanStatus;
+      if (hasCutoff && !isSuperAdmin) {
+        effectiveStatus = 'auto';
+      }
+
       // Call secure stored procedure: record_attendance_scan
       const { data, error } = await supabase.rpc('record_attendance_scan', {
         p_meeting_id: selectedMeetingId,
         p_identifier: identifier.trim(),
-        p_status: scanStatus,
+        p_status: effectiveStatus,
         p_notes: 'تسجيل عبر كاميرا QR',
       });
 
@@ -196,9 +264,10 @@ export default function ScanAttendancePage() {
         playBeep(false);
       } else if (data && data.success) {
         setLastScannedResult(data);
+        const statusLabel = data.status === 'late' ? 'متأخر' : 'حاضر (في الموعد)';
         setResultMessage({
           type: 'success',
-          text: `تم تسجيل حضور الخادم: ${data.full_name} (${scanStatus === 'present' ? 'حاضر' : 'متأخر'})`,
+          text: `تم تسجيل حضور الخادم: ${data.full_name} (${statusLabel})`,
         });
         playBeep(true);
 
@@ -236,8 +305,6 @@ export default function ScanAttendancePage() {
     if (!manualCode.trim()) return;
     processIdentifier(manualCode.trim());
   };
-
-  const selectedMeeting = meetings.find((m) => m.id === selectedMeetingId);
 
   return (
     <AppShell>
@@ -277,9 +344,17 @@ export default function ScanAttendancePage() {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {/* Meeting selector */}
             <div>
-              <label className="block text-xs font-bold text-brown-900 dark:text-brown-200 mb-1">
-                الاجتماع المستهدف
-              </label>
+              <div className="flex items-center justify-between mb-1">
+                <label className="block text-xs font-bold text-brown-900 dark:text-brown-200">
+                  الاجتماع المستهدف
+                </label>
+                {selectedMeeting?.late_cutoff_time && (
+                  <span className="text-[10px] font-bold text-amber-700 dark:text-amber-400 bg-amber-100 dark:bg-amber-950/60 px-2 py-0.5 rounded-md flex items-center gap-1">
+                    <Clock className="w-3 h-3" />
+                    موعد التأخير: {formatDisplayTime(selectedMeeting.late_cutoff_time)}
+                  </span>
+                )}
+              </div>
               <select
                 value={selectedMeetingId}
                 onChange={(e) => setSelectedMeetingId(e.target.value)}
@@ -288,43 +363,123 @@ export default function ScanAttendancePage() {
                 {meetings.map((m) => (
                   <option key={m.id} value={m.id}>
                     {m.title} - {formatDateArabic(m.meeting_date)} ({m.status === 'open' ? 'مفتوح' : m.status === 'upcoming' ? 'قادم' : 'مغلق'})
+                    {m.late_cutoff_time ? ` [موعد التأخير: ${formatDisplayTime(m.late_cutoff_time)}]` : ''}
                   </option>
                 ))}
               </select>
+
+              {/* Super Admin Control: Set / Update / Clear Cutoff Time */}
+              {isSuperAdmin && (
+                <div className="mt-2.5 p-2.5 rounded-xl bg-white dark:bg-[#1a1410] border border-brown-200 dark:border-brown-800 flex flex-wrap items-center justify-between gap-2 shadow-xs">
+                  <div className="flex items-center gap-1.5 text-xs font-bold text-brown-800 dark:text-brown-200">
+                    <Clock className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                    <span>توقيت بدء رصد التأخير:</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <input
+                      type="time"
+                      value={cutoffTimeInput}
+                      onChange={(e) => setCutoffTimeInput(e.target.value)}
+                      className="px-2 py-1 text-xs font-mono font-bold bg-brown-50 dark:bg-brown-950 border border-brown-300 dark:border-brown-700 rounded-lg text-brown-950 dark:text-brown-50 focus:outline-none focus:ring-1 focus:ring-brown-600"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => handleUpdateCutoffTime(cutoffTimeInput)}
+                      disabled={isSavingCutoff || !cutoffTimeInput}
+                      className="px-2.5 py-1 text-xs font-bold bg-brown-800 hover:bg-brown-900 text-white rounded-lg transition-colors disabled:opacity-50 cursor-pointer shadow-xs"
+                    >
+                      {isSavingCutoff ? '...' : 'تثبيت'}
+                    </button>
+                    {selectedMeeting?.late_cutoff_time && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setCutoffTimeInput('');
+                          handleUpdateCutoffTime(null);
+                        }}
+                        disabled={isSavingCutoff}
+                        className="px-2 py-1 text-xs font-bold text-rose-600 hover:text-rose-700 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-lg transition-colors cursor-pointer"
+                        title="إلغاء التوقيت التلقائي"
+                      >
+                        إلغاء
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Attendance Status Selector */}
             <div>
-              <label className="block text-xs font-bold text-brown-900 dark:text-brown-200 mb-1">
-                حالة الحضور عند المسح
-              </label>
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => setScanStatus('present')}
-                  className={`flex-1 py-2 px-3 rounded-xl text-xs sm:text-sm font-bold flex items-center justify-center gap-2 border transition-all cursor-pointer ${
-                    scanStatus === 'present'
-                      ? 'bg-emerald-600 text-white border-emerald-600 shadow-sm'
-                      : 'bg-white dark:bg-[#231b15] text-brown-700 dark:text-brown-300 border-brown-200 dark:border-brown-700 hover:bg-emerald-50'
-                  }`}
-                >
-                  <CheckCircle2 className="w-4 h-4" />
-                  <span>حاضر (في الموعد)</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setScanStatus('late')}
-                  className={`flex-1 py-2 px-3 rounded-xl text-xs sm:text-sm font-bold flex items-center justify-center gap-2 border transition-all cursor-pointer ${
-                    scanStatus === 'late'
-                      ? 'bg-amber-600 text-white border-amber-600 shadow-sm'
-                      : 'bg-white dark:bg-[#231b15] text-brown-700 dark:text-brown-300 border-brown-200 dark:border-brown-700 hover:bg-amber-50'
-                  }`}
-                >
-                  <Clock className="w-4 h-4" />
-                  <span>متأخر</span>
-                </button>
+              <div className="flex items-center justify-between mb-1">
+                <label className="block text-xs font-bold text-brown-900 dark:text-brown-200">
+                  حالة الحضور عند المسح
+                </label>
+                {isSuperAdmin && (
+                  <span className="text-[10px] text-brown-500 font-bold">
+                    (تحكم كامل للمشرف العام)
+                  </span>
+                )}
               </div>
+
+              {/* If meeting has cutoff and user is regular Admin: REMOVE the manual choice options! */}
+              {hasCutoff && !isSuperAdmin ? (
+                <div className="p-3 rounded-xl bg-amber-500/10 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-800 flex items-center gap-2.5">
+                  <Clock className="w-5 h-5 text-amber-600 dark:text-amber-400 shrink-0" />
+                  <div className="text-xs">
+                    <div className="font-bold text-amber-950 dark:text-amber-100">
+                      الرصد التلقائي للتأخير مفعل
+                    </div>
+                    <div className="text-[11px] text-amber-800 dark:text-amber-300 mt-0.5">
+                      الحضور قبل <strong>{formatDisplayTime(selectedMeeting.late_cutoff_time)}</strong> يُسجل حاضر، وبعده متأخر تلقائياً.
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                /* Super Admin OR No Cutoff: Show buttons */
+                <div className="flex items-center gap-2">
+                  {hasCutoff && isSuperAdmin && (
+                    <button
+                      type="button"
+                      onClick={() => setScanStatus('auto')}
+                      className={`flex-1 py-2 px-2.5 rounded-xl text-xs sm:text-sm font-bold flex items-center justify-center gap-1.5 border transition-all cursor-pointer ${
+                        scanStatus === 'auto'
+                          ? 'bg-brown-800 text-white border-brown-800 shadow-sm'
+                          : 'bg-white dark:bg-[#231b15] text-brown-700 dark:text-brown-300 border-brown-200 dark:border-brown-700 hover:bg-brown-100 dark:hover:bg-brown-900'
+                      }`}
+                    >
+                      <Clock className="w-3.5 h-3.5" />
+                      <span>تلقائي</span>
+                    </button>
+                  )}
+
+                  <button
+                    type="button"
+                    onClick={() => setScanStatus('present')}
+                    className={`flex-1 py-2 px-2.5 rounded-xl text-xs sm:text-sm font-bold flex items-center justify-center gap-1.5 border transition-all cursor-pointer ${
+                      scanStatus === 'present'
+                        ? 'bg-emerald-600 text-white border-emerald-600 shadow-sm'
+                        : 'bg-white dark:bg-[#231b15] text-brown-700 dark:text-brown-300 border-brown-200 dark:border-brown-700 hover:bg-emerald-50'
+                    }`}
+                  >
+                    <CheckCircle2 className="w-3.5 h-3.5" />
+                    <span>حاضر (في الموعد)</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setScanStatus('late')}
+                    className={`flex-1 py-2 px-2.5 rounded-xl text-xs sm:text-sm font-bold flex items-center justify-center gap-1.5 border transition-all cursor-pointer ${
+                      scanStatus === 'late'
+                        ? 'bg-amber-600 text-white border-amber-600 shadow-sm'
+                        : 'bg-white dark:bg-[#231b15] text-brown-700 dark:text-brown-300 border-brown-200 dark:border-brown-700 hover:bg-amber-50'
+                    }`}
+                  >
+                    <Clock className="w-3.5 h-3.5" />
+                    <span>متأخر</span>
+                  </button>
+                </div>
+              )}
             </div>
           </div>
 

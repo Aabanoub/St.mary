@@ -28,6 +28,17 @@ import {
 } from 'lucide-react';
 import { formatDateArabic, formatShortDateArabic, getAttendanceStatusConfig } from '@/lib/utils/formatters';
 
+function formatDisplayTime(timeStr?: string | null): string {
+  if (!timeStr) return '';
+  const [hStr, mStr] = timeStr.split(':');
+  let h = parseInt(hStr, 10);
+  const m = mStr || '00';
+  const isPM = h >= 12;
+  if (h === 0) h = 12;
+  else if (h > 12) h -= 12;
+  return `${h.toString().padStart(2, '0')}:${m} ${isPM ? 'م' : 'ص'}`;
+}
+
 export default function AttendanceHubPage() {
   const { role, hasPermission, profile } = useAuth();
   const [meetings, setMeetings] = useState<any[]>([]);
@@ -43,6 +54,7 @@ export default function AttendanceHubPage() {
   const [meetingDate, setMeetingDate] = useState('');
   const [meetingStatus, setMeetingStatus] = useState<'upcoming' | 'open' | 'closed'>('upcoming');
   const [meetingNotes, setMeetingNotes] = useState('');
+  const [meetingLateCutoffTime, setMeetingLateCutoffTime] = useState('');
   const [isSavingMeeting, setIsSavingMeeting] = useState(false);
 
   // Status correction modal state
@@ -120,6 +132,18 @@ export default function AttendanceHubPage() {
     setMeetingDate(d.toISOString().split('T')[0]);
     setMeetingStatus('upcoming');
     setMeetingNotes('');
+    setMeetingLateCutoffTime('');
+    setIsMeetingModalOpen(true);
+  };
+
+  // Open modal to edit meeting
+  const handleEditMeeting = (m: any) => {
+    setEditingMeeting(m);
+    setMeetingTitle(m.title);
+    setMeetingDate(m.meeting_date);
+    setMeetingStatus(m.status);
+    setMeetingNotes(m.notes || '');
+    setMeetingLateCutoffTime(m.late_cutoff_time?.substring(0, 5) || '');
     setIsMeetingModalOpen(true);
   };
 
@@ -138,6 +162,7 @@ export default function AttendanceHubPage() {
             meeting_date: meetingDate,
             status: meetingStatus,
             notes: meetingNotes,
+            late_cutoff_time: meetingLateCutoffTime || null,
             updated_at: new Date().toISOString(),
           })
           .eq('id', editingMeeting.id);
@@ -147,6 +172,7 @@ export default function AttendanceHubPage() {
           meeting_date: meetingDate,
           status: meetingStatus,
           notes: meetingNotes,
+          late_cutoff_time: meetingLateCutoffTime || null,
           created_by: profile?.id,
         });
       }
@@ -353,12 +379,27 @@ export default function AttendanceHubPage() {
                       </div>
 
                       <div className="flex items-center justify-between text-[11px] text-brown-500">
-                        <span>{formatDateArabic(m.meeting_date)}</span>
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span>{formatDateArabic(m.meeting_date)}</span>
+                          {m.late_cutoff_time && (
+                            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300 text-[10px] font-bold">
+                              <Clock className="w-2.5 h-2.5" />
+                              {formatDisplayTime(m.late_cutoff_time)}
+                            </span>
+                          )}
+                        </div>
                         {isSuperAdmin && (
-                          <div className="flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
+                          <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+                            <button
+                              onClick={() => handleEditMeeting(m)}
+                              className="text-brown-600 hover:text-brown-900 font-bold p-1 cursor-pointer"
+                              title="تعديل الاجتماع وتوقيت التأخير"
+                            >
+                              <Edit2 className="w-3.5 h-3.5" />
+                            </button>
                             <button
                               onClick={() => handleToggleMeetingStatus(m)}
-                              className="text-brown-600 hover:text-brown-900 font-bold"
+                              className="text-brown-600 hover:text-brown-900 font-bold p-1 cursor-pointer"
                               title={m.status === 'open' ? 'إغلاق الاجتماع' : 'فتح الاجتماع'}
                             >
                               {m.status === 'open' ? <Lock className="w-3.5 h-3.5" /> : <Unlock className="w-3.5 h-3.5" />}
@@ -507,6 +548,21 @@ export default function AttendanceHubPage() {
                 <option value="open">مفتوح لتسجيل الحضور (Open)</option>
                 <option value="closed">مغلق (Closed)</option>
               </select>
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-brown-900 dark:text-brown-200 mb-1">
+                موعد رصد التأخير التلقائي (اختياري)
+              </label>
+              <input
+                type="time"
+                value={meetingLateCutoffTime}
+                onChange={(e) => setMeetingLateCutoffTime(e.target.value)}
+                className="w-full py-2 px-3 bg-brown-50/50 dark:bg-brown-950/40 border border-brown-300 dark:border-brown-700 rounded-xl text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-brown-600 font-mono"
+              />
+              <span className="text-[11px] text-brown-500 mt-1 block">
+                عند تحديد هذا التوقيت، يتم رصد الخادم تلقائياً كـ &quot;متأخر&quot; إذا سجل حضوره بعد هذا الوقت.
+              </span>
             </div>
 
             <div>

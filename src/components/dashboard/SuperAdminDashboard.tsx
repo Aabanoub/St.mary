@@ -199,19 +199,19 @@ export function SuperAdminDashboard() {
             كنيسة السيدة العذراء مريم - إعداد خدام
           </h1>
           <p className="text-xs sm:text-sm text-brown-200 mt-1 max-w-2xl leading-relaxed">
-            التحكم الشامل في حسابات الخدام، استيراد بيانات Excel، الحضور والغياب، إصدار تقارير PDF الرسمية، خطط القراءة والامتحانات الروحية.
+            إدارة الحضور والغياب، وبرنامج القراءات اليومية.
           </p>
         </div>
 
         <div className="flex flex-wrap items-center gap-2.5 shrink-0">
-          <Link href="/users/import">
+          <Link href="/users">
             <Button
               variant="gold"
               size="md"
-              leftIcon={<FileUp className="w-4 h-4" />}
+              leftIcon={<Users className="w-4 h-4" />}
               className="font-bold shadow-md"
             >
-              استيراد إكسيل
+              إدارة الخدام والمخدومين
             </Button>
           </Link>
           <Link href="/attendance/scan">
