@@ -5,12 +5,14 @@ import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase/client';
 import { normalizePhone, isValidEgyptianPhone } from '@/lib/utils/formatters';
-import { Eye, EyeOff, Lock, Phone, AlertCircle, Loader2, Smartphone } from 'lucide-react';
+import { Eye, EyeOff, Lock, Phone, AlertCircle, Loader2, Smartphone, ShieldAlert } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { usePwaInstall } from '@/hooks/usePwaInstall';
+import { useSiteLock } from '@/context/SiteLockContext';
 
 export default function LoginPage() {
   const { isInstalled } = usePwaInstall();
+  const { lockConfig } = useSiteLock();
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -60,10 +62,10 @@ export default function LoginPage() {
       }
 
       if (data.user) {
-        // Fetch profile to check if user must change password
+        // Fetch profile to check if user must change password & role
         const { data: profile } = await supabase
           .from('profiles')
-          .select('must_change_password, is_active')
+          .select('must_change_password, is_active, role')
           .eq('id', data.user.id)
           .single();
 
@@ -72,6 +74,21 @@ export default function LoginPage() {
           setError('تم تعطيل هذا الحساب. يرجى مراجعة إدارة الخدمة.');
           setIsLoading(false);
           return;
+        }
+
+        // If site is locked, verify permission
+        if (lockConfig.is_locked) {
+          const isAllowed = profile?.role === 'super_admin' || (profile?.role === 'admin' && lockConfig.allow_admins);
+          if (!isAllowed) {
+            await supabase.auth.signOut();
+            setError(
+              lockConfig.title
+                ? `الموقع مغلق للصيانة حالياً: ${lockConfig.title}`
+                : 'الموقع مغلق حالياً أمام المخدومين لأعمال الصيانة والتطوير.'
+            );
+            setIsLoading(false);
+            return;
+          }
         }
 
         if (profile?.must_change_password) {
@@ -107,6 +124,22 @@ export default function LoginPage() {
       }
 
       if (data.user) {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('must_change_password, is_active, role')
+          .eq('id', data.user.id)
+          .single();
+
+        if (lockConfig.is_locked) {
+          const isAllowed = profile?.role === 'super_admin' || (profile?.role === 'admin' && lockConfig.allow_admins);
+          if (!isAllowed) {
+            await supabase.auth.signOut();
+            setError('الموقع مغلق حالياً أمام المخدومين لأعمال الصيانة والتطوير.');
+            setIsLoading(false);
+            return;
+          }
+        }
+
         router.push('/dashboard');
       }
     } catch (err: unknown) {
@@ -140,6 +173,19 @@ export default function LoginPage() {
           </p>
           <div className="w-16 h-1 bg-brown-500 rounded-full mt-3 opacity-60" />
         </div>
+
+        {/* Site Lock Notification Banner */}
+        {lockConfig.is_locked && (
+          <div className="mb-6 p-4 rounded-2xl bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-800 text-xs text-amber-950 dark:text-amber-200">
+            <div className="flex items-center gap-2 font-black mb-1 text-amber-900 dark:text-amber-100">
+              <ShieldAlert className="w-4 h-4 text-amber-600 shrink-0" />
+              <span>وضع الصيانة مفعل: {lockConfig.title}</span>
+            </div>
+            <p className="leading-relaxed text-amber-800 dark:text-amber-300">
+              تسجيل الدخول متاح للمشرف العام فقط أثناء فترة الصيانة والتحديث.
+            </p>
+          </div>
+        )}
 
         {/* Error Alert */}
         {error && (

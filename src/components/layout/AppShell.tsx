@@ -1,14 +1,18 @@
 'use client';
 
 import React from 'react';
+import Link from 'next/link';
 import { Navbar } from './Navbar';
 import { Sidebar } from './Sidebar';
 import { MobileNav } from './MobileNav';
 import { useAuth } from '@/context/AuthContext';
-import { Loader2 } from 'lucide-react';
+import { useSiteLock } from '@/context/SiteLockContext';
+import { SiteLockScreen } from './SiteLockScreen';
+import { Loader2, Lock } from 'lucide-react';
 
 export function AppShell({ children }: { children: React.ReactNode }) {
-  const { isLoading, user } = useAuth();
+  const { isLoading, user, role } = useAuth();
+  const { lockConfig, isAccessBlocked, quickToggleLock } = useSiteLock();
 
   if (isLoading) {
     return (
@@ -26,13 +30,44 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     );
   }
 
+  // If site is locked and current user is blocked, render lock screen
+  if (isAccessBlocked) {
+    return <SiteLockScreen />;
+  }
+
   // If user is not authenticated, render without shell (e.g. login)
   if (!user) {
     return <>{children}</>;
   }
 
+  const isSuperAdmin = role === 'super_admin';
+
   return (
     <div className="min-h-screen flex flex-col bg-[#fbf8f5] dark:bg-[#18120e]">
+      {/* Super Admin Persistent Site Lock Alert Banner */}
+      {isSuperAdmin && lockConfig.is_locked && (
+        <div className="bg-amber-600 dark:bg-amber-700 text-white px-4 py-2 text-xs sm:text-sm font-bold flex flex-wrap items-center justify-between gap-2 shadow-sm sticky top-0 z-50">
+          <div className="flex items-center gap-2">
+            <Lock className="w-4 h-4 animate-pulse shrink-0" />
+            <span>الموقع مقفل حالياً أمام المخدومين ({lockConfig.title})</span>
+          </div>
+          <div className="flex items-center gap-3">
+            <Link
+              href="/system-lock"
+              className="underline hover:text-amber-100 transition-colors"
+            >
+              إدارة إعدادات ورسالة القفل
+            </Link>
+            <button
+              onClick={() => quickToggleLock(false)}
+              className="px-2.5 py-1 bg-white text-amber-900 rounded-lg text-xs font-bold hover:bg-amber-50 cursor-pointer transition-colors shadow-xs"
+            >
+              إلغاء القفل وفتح الموقع
+            </button>
+          </div>
+        </div>
+      )}
+
       <Navbar />
       <div className="flex-1 flex max-w-7xl w-full mx-auto">
         <Sidebar />
@@ -44,3 +79,4 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     </div>
   );
 }
+

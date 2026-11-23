@@ -187,3 +187,20 @@ export interface ActivityLog {
   created_at: string;
   actor?: Profile | null;
 }
+
+export interface SiteLockConfig {
+  is_locked: boolean;
+  title: string;
+  message: string;
+  allow_admins: boolean;
+  estimated_unlock_time?: string;
+  contact_info?: string;
+}
+
+export interface SystemSetting<T = unknown> {
+  key: string;
+  value: T;
+  updated_at: string;
+  updated_by?: string | null;
+}
+

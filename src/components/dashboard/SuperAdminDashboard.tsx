@@ -30,11 +30,15 @@ import {
   AlertTriangle,
   RotateCcw,
   X,
+  Lock,
+  Unlock,
 } from 'lucide-react';
 import { formatDateArabic, formatShortDateArabic, getAttendanceStatusConfig } from '@/lib/utils/formatters';
+import { useSiteLock } from '@/context/SiteLockContext';
 
 export function SuperAdminDashboard() {
   const { profile } = useAuth();
+  const { lockConfig } = useSiteLock();
   const [stats, setStats] = useState({
     totalUsers: 0,
     totalAdmins: 0,
@@ -222,6 +226,57 @@ export function SuperAdminDashboard() {
               className="font-bold"
             >
               مسح باركود
+            </Button>
+          </Link>
+        </div>
+      </div>
+
+      {/* Site Lock Status Notification Banner on Dashboard */}
+      <div
+        className={`p-4 rounded-2xl border flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
+          lockConfig.is_locked
+            ? 'bg-amber-500/15 dark:bg-amber-950/40 border-amber-400 dark:border-amber-700 shadow-sm'
+            : 'bg-emerald-500/10 dark:bg-emerald-950/20 border-emerald-300 dark:border-emerald-800/60'
+        }`}
+      >
+        <div className="flex items-center gap-3">
+          <div
+            className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 shadow-xs ${
+              lockConfig.is_locked
+                ? 'bg-amber-600 text-white'
+                : 'bg-emerald-600 text-white'
+            }`}
+          >
+            {lockConfig.is_locked ? <Lock className="w-5 h-5" /> : <Unlock className="w-5 h-5" />}
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="text-xs sm:text-sm font-bold text-brown-950 dark:text-brown-50">
+                إتاحة الموقع للمخدومين:
+              </span>
+              <Badge variant={lockConfig.is_locked ? 'warning' : 'success'} size="sm">
+                {lockConfig.is_locked ? '🔒 مغلق للصيانة' : '🟢 مفتوح للجميع'}
+              </Badge>
+            </div>
+            <p className="text-[11px] text-brown-600 dark:text-brown-400 mt-0.5">
+              {lockConfig.is_locked
+                ? `الرسالة الحالية: "${lockConfig.title}"`
+                : 'المنصة تعمل ومتاحة لجميع المخدومين والخدام بشكل طبيعي.'}
+            </p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2 shrink-0">
+          <Link href="/system-lock">
+            <Button
+              variant={lockConfig.is_locked ? 'primary' : 'outline'}
+              size="sm"
+              leftIcon={<Lock className="w-3.5 h-3.5" />}
+              className={`text-xs font-bold cursor-pointer ${
+                lockConfig.is_locked ? 'bg-amber-700 hover:bg-amber-800 text-white' : ''
+              }`}
+            >
+              {lockConfig.is_locked ? 'تعديل رسالة القفل' : 'قفل الموقع (صيانة)'}
             </Button>
           </Link>
         </div>

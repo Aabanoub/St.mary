@@ -19,6 +19,7 @@ import {
   ScrollText,
   FileText,
   Download,
+  Lock,
 } from 'lucide-react';
 
 export function Sidebar() {
@@ -59,6 +60,7 @@ export function Sidebar() {
     { label: 'صلاحيات المشرفين', href: '/exams/permissions', icon: ShieldAlert },
     { label: 'مركز الإشعارات العام', href: '/notifications', icon: Bell },
     { label: 'سجل نشاط النظام (Audit)', href: '/activity-logs', icon: ScrollText },
+    { label: 'قفل وتعطيل المنصة', href: '/system-lock', icon: Lock },
   ];
 
   const items = isSuperAdmin

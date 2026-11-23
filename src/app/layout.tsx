@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from 'next';
 import './globals.css';
 import { AuthProvider } from '@/context/AuthContext';
 import { ThemeProvider } from '@/context/ThemeContext';
+import { SiteLockProvider } from '@/context/SiteLockContext';
 import { InstallPromptModal } from '@/components/pwa/InstallPromptModal';
 
 export const metadata: Metadata = {
@@ -45,8 +46,10 @@ export default function RootLayout({
       <body className="min-h-screen bg-[#fbf8f5] dark:bg-[#18120e] text-[#22140c] dark:text-[#f5eee7] antialiased selection:bg-brown-200 dark:selection:bg-brown-800">
         <ThemeProvider>
           <AuthProvider>
-            {children}
-            <InstallPromptModal />
+            <SiteLockProvider>
+              {children}
+              <InstallPromptModal />
+            </SiteLockProvider>
           </AuthProvider>
         </ThemeProvider>
 
